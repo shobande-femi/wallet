@@ -186,6 +186,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 //    main = 'com.isw.client.TestClientRPC'
 //    args 'localhost:10006', 'femi'
 //}
+
 compileKotlin {
     kotlinOptions.jvmTarget = "1.8"
 }
