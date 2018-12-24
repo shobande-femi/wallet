@@ -1,7 +1,3 @@
-plugins {
-    id 'org.jetbrains.kotlin.jvm'
-}
-
 group 'com.isw.paple.common'
 version '1.0.0'
 
