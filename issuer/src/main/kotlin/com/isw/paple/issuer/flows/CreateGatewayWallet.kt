@@ -24,8 +24,7 @@ class CreateGatewayWallet(val wallet: Wallet) : FlowLogic<SignedTransaction>() {
     companion object {
         // TODO: fine tune progress tracker
         object NOTARY_ID : ProgressTracker.Step("Getting Notary Identity")
-        object TX_BUILDER : ProgressTracker.Step("Creating transaction builder and assigning notary")
-        object OTHER_TX_COMPONENTS : ProgressTracker.Step("Gathering transaction's other components")
+        object TX_BUILDER : ProgressTracker.Step("Creating transaction builder, assigning notary, and gathering other components")
 
         object TX_VERIFICATION : ProgressTracker.Step("Verifying transaction")
         object TX_SIGNING : ProgressTracker.Step("Signing a transaction")
@@ -33,7 +32,7 @@ class CreateGatewayWallet(val wallet: Wallet) : FlowLogic<SignedTransaction>() {
             override fun childProgressTracker() = FinalityFlow.tracker()
         }
 
-        fun tracker() = ProgressTracker(NOTARY_ID, TX_BUILDER, OTHER_TX_COMPONENTS, TX_VERIFICATION, TX_SIGNING, FINALISING)
+        fun tracker() = ProgressTracker(NOTARY_ID, TX_BUILDER, TX_VERIFICATION, TX_SIGNING, FINALISING)
     }
 
     override val progressTracker: ProgressTracker = tracker()
@@ -53,15 +52,20 @@ class CreateGatewayWallet(val wallet: Wallet) : FlowLogic<SignedTransaction>() {
 
         logger.info("No state for $wallet. Adding it.")
         val walletState = wallet.toState(ourIdentity)
+        progressTracker.currentStep = NOTARY_ID
         val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
         // The node running this flow is always the only signer.
         val command = Command(WalletContract.Add(), listOf(ourIdentity.owningKey))
         val outputStateAndContract = StateAndContract(walletState, WalletContract.CONTRACT_ID)
+        progressTracker.currentStep = TX_BUILDER
         val unsignedTransaction = TransactionBuilder(notary = notary).withItems(command, outputStateAndContract)
 
-        val signedTransaction = serviceHub.signInitialTransaction(unsignedTransaction)
+        // TODO: verify transaction
 
+        progressTracker.currentStep = TX_SIGNING
+        val signedTransaction = serviceHub.signInitialTransaction(unsignedTransaction)
+        
         progressTracker.currentStep = FINALISING
         return subFlow(FinalityFlow(signedTransaction))
 
