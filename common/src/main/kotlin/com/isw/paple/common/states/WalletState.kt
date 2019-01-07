@@ -38,7 +38,7 @@ data class WalletState (
 
     override fun generateMappedObject(schema: MappedSchema): PersistentState {
         return when (schema) {
-            is WalletStateSchemaV1 -> WalletStateSchemaV1.PersistentBankAccountState(
+            is WalletStateSchemaV1 -> WalletStateSchemaV1.PersistentWalletState(
                 owner = owner.name.toString(),
                 createdBy = createdBy.name.toString(),
                 amount = amount.quantity.toString(),
@@ -47,7 +47,7 @@ data class WalletState (
                 type = type.name,
                 verified = verified,
                 linearId = linearId.id.toString(),
-                externalId = linearId.externalId.toString(),
+                walletId = linearId.externalId.toString(),
                 createdAt = createdAt.toEpochMilli(),
                 lastUpdated = lastUpdated.toEpochMilli()
             )
