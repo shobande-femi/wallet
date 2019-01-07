@@ -9,6 +9,7 @@ repositories {
     maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/list/corda-dev/' }
 }
 
+apply plugin: 'kotlin'
 //apply sourceCompatibility: 'kotlin'
 apply plugin: 'net.corda.plugins.cordapp'
 apply plugin: 'net.corda.plugins.cordformation'
@@ -66,10 +67,4 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
         jvmTarget = "1.8"
         javaParameters = true   // Useful for reflection.
     }
-}
-compileKotlin {
-    kotlinOptions.jvmTarget = "1.8"
-}
-compileTestKotlin {
-    kotlinOptions.jvmTarget = "1.8"
 }
