@@ -11,12 +11,12 @@ object WalletStateSchema
 object WalletStateSchemaV1 : MappedSchema(
     schemaFamily = WalletStateSchema.javaClass,
     version = 1,
-    mappedTypes = listOf(PersistentBankAccountState::class.java)
+    mappedTypes = listOf(PersistentWalletState::class.java)
 ) {
 
     @Entity
-    @Table(name = "bank_account_states")
-    class PersistentBankAccountState(
+    @Table(name = "wallet_states")
+    class PersistentWalletState(
         @Column(name = "owner")
         var owner: String,
         @Column(name = "created_by")
@@ -33,8 +33,8 @@ object WalletStateSchemaV1 : MappedSchema(
         var verified: Boolean,
         @Column(name = "linear_id")
         var linearId: String,
-        @Column(name = "external_id")
-        var externalId: String,
+        @Column(name = "wallet_id")
+        var walletId: String,
         @Column(name = "created_at")
         var createdAt: Long,
         @Column(name = "last_updated")
@@ -50,7 +50,7 @@ object WalletStateSchemaV1 : MappedSchema(
             type = "",
             verified = false,
             linearId = "",
-            externalId = "",
+            walletId = "",
             createdAt = 0L,
             lastUpdated = 0L
         )
