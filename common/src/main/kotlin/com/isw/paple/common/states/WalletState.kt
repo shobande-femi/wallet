@@ -14,7 +14,7 @@ import net.corda.core.schemas.QueryableState
 import java.time.Instant
 import java.util.*
 
-data class SubWalletState (
+data class WalletState (
     val owner: Party,
     val createdBy: Party,
     val amount: Amount<Currency>,
