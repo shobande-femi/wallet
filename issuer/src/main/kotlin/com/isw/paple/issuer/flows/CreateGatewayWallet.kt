@@ -7,9 +7,7 @@ import com.isw.paple.common.types.toState
 import com.isw.paple.common.utilities.getWalletStateByWalletId
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndContract
-import net.corda.core.flows.FinalityFlow
-import net.corda.core.flows.FlowLogic
-import net.corda.core.flows.StartableByRPC
+import net.corda.core.flows.*
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
@@ -18,8 +16,9 @@ import net.corda.core.utilities.ProgressTracker
  * Adds a new [Wallet] state to the ledger.
  * The state is always added as a "uni-lateral state" to the node calling this flow.
  */
+@InitiatingFlow
 @StartableByRPC
-class CreateGatewayWallet(val wallet: Wallet) : FlowLogic<SignedTransaction>() {
+class CreateGatewayWallet(private val wallet: Wallet) : FlowLogic<SignedTransaction>() {
 
     companion object {
         // TODO: fine tune progress tracker
@@ -28,11 +27,12 @@ class CreateGatewayWallet(val wallet: Wallet) : FlowLogic<SignedTransaction>() {
 
         object TX_VERIFICATION : ProgressTracker.Step("Verifying transaction")
         object TX_SIGNING : ProgressTracker.Step("Signing a transaction")
+        object FLOW_SESSION: ProgressTracker.Step("Initiation flow session with counter parties")
         object FINALISING : ProgressTracker.Step("Finalising transaction") {
             override fun childProgressTracker() = FinalityFlow.tracker()
         }
 
-        fun tracker() = ProgressTracker(NOTARY_ID, TX_BUILDER, TX_VERIFICATION, TX_SIGNING, FINALISING)
+        fun tracker() = ProgressTracker(NOTARY_ID, TX_BUILDER, TX_VERIFICATION, TX_SIGNING, FLOW_SESSION, FINALISING)
     }
 
     override val progressTracker: ProgressTracker = tracker()
@@ -65,10 +65,23 @@ class CreateGatewayWallet(val wallet: Wallet) : FlowLogic<SignedTransaction>() {
 
         progressTracker.currentStep = TX_SIGNING
         val signedTransaction = serviceHub.signInitialTransaction(unsignedTransaction)
-        
-        progressTracker.currentStep = FINALISING
-        return subFlow(FinalityFlow(signedTransaction))
 
+        progressTracker.currentStep = FLOW_SESSION
+        val session = initiateFlow(ourIdentity)
+
+        progressTracker.currentStep = FINALISING
+        return subFlow(FinalityFlow(signedTransaction, session))
+
+    }
+
+}
+
+@InitiatedBy(CreateGatewayWallet::class)
+class CreateGatewayWalletResponder(private val counterParty: FlowSession) : FlowLogic<Unit>() {
+
+    @Suspendable
+    override fun call() {
+        subFlow(ReceiveFinalityFlow(counterParty))
     }
 
 }
