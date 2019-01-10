@@ -7,8 +7,7 @@ import net.corda.core.transactions.LedgerTransaction
 class WalletContract : Contract {
 
     companion object {
-        @JvmStatic
-        val CONTRACT_ID = "com.isw.paple.common.contracts.WalletContract"
+        const val CONTRACT_ID = "com.isw.paple.common.contracts.WalletContract"
     }
 
     interface Commands : CommandData
