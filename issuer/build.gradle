@@ -1,29 +1,28 @@
-group 'com.isw.paple.issuer'
-version '1.0.0'
-
-repositories {
-    mavenLocal()
-    jcenter()
-    mavenCentral()
-    maven { url 'https://jitpack.io' }
-    maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/list/corda-dev/' }
-}
-
 apply plugin: 'kotlin'
-//apply sourceCompatibility: 'kotlin'
 apply plugin: 'net.corda.plugins.cordapp'
 apply plugin: 'net.corda.plugins.cordformation'
 apply plugin: 'net.corda.plugins.quasar-utils'
 
+cordapp {
+    targetPlatformVersion 4
+    minimumPlatformVersion 4
+    workflow {
+        name "Paple Issuer Specific Workflows"
+        vendor "Interswitch"
+        licence "A liberal, open source licence"
+        versionId 1
+    }
+}
+
 sourceSets {
     main {
         resources {
-            srcDir "config/dev"
+            srcDir rootProject.file("config/dev")
         }
     }
     test {
         resources {
-            srcDir "config/test"
+            srcDir rootProject.file("config/test")
         }
     }
     integrationTest {
@@ -45,12 +44,14 @@ dependencies {
     testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
     testCompile "junit:junit:$junit_version"
 
-    // Corda integration dependencies
+    // Corda dependencies
     cordaCompile "$corda_release_group:corda-core:$corda_release_version"
-    cordaCompile "$corda_release_group:corda-finance:$corda_release_version"
+    cordaCompile "$corda_release_group:corda-finance-workflows:$corda_release_version"
     cordaCompile "$corda_release_group:corda-jackson:$corda_release_version"
     cordaCompile "$corda_release_group:corda-node-api:$corda_release_version"
     cordaRuntime "$corda_release_group:corda:$corda_release_version"
+
+    testCompile "$corda_release_group:corda-node-driver:$corda_release_version"
 
     // CorDapp dependencies
     cordapp project(":common")

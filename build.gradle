@@ -1,22 +1,23 @@
 buildscript {
-    ext.corda_release_group = 'net.corda'
-    ext.corda_release_version = '4.0-SNAPSHOT'
-    ext.corda_gradle_plugins_version = '4.0.25'
-    ext.kotlin_version = '1.3.11'
-    ext.junit_version = '4.12'
-    ext.quasar_version = '0.7.9'
-    ext.retrofit_version = '2.4.0'
-    ext.okhttp_version = '3.9.1'
-    ext.retrofit_version = '2.4.0'
-    ext.jopt_simple_version = '5.0.2'
-    ext.slf4j_version = '1.7.25'
-    ext.log4j_version = '2.9.1'
+    ext {
+        corda_release_group = 'net.corda'
+        corda_release_version = '4.0-SNAPSHOT'
+        corda_gradle_plugins_version = '4.0.37'
+        kotlin_version = '1.2.71'
+        junit_version = '4.12'
+        quasar_version = '0.7.10'
+        spring_boot_version = '2.0.2.RELEASE'
+        spring_boot_gradle_plugin_version = '2.0.2.RELEASE'
+        slf4j_version = '1.7.25'
+        log4j_version = '2.9.1'
+    }
 
     repositories {
         mavenLocal()
         mavenCentral()
         jcenter()
-        maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/list/corda-dev/' }
+        maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/corda' }
+//        maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/corda-dev' }
     }
 
     dependencies {
@@ -24,19 +25,21 @@ buildscript {
         classpath "net.corda.plugins:cordapp:$corda_gradle_plugins_version"
         classpath "net.corda.plugins:cordformation:$corda_gradle_plugins_version"
         classpath "net.corda.plugins:quasar-utils:$corda_gradle_plugins_version"
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:$spring_boot_gradle_plugin_version"
     }
 }
 
-group 'com.isw.paple'
-version '1.0.0'
-
-repositories {
-    mavenLocal()
-    jcenter()
-    mavenCentral()
-    maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/list/corda-dev/' }
-    maven { url 'https://jitpack.io' }
-    maven { url 'http://bluebank-nexus.uksouth.cloudapp.azure.com/repository/maven-public/'}
+allprojects {
+    repositories {
+        mavenLocal()
+        jcenter()
+        mavenCentral()
+        maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/corda' }
+        // Can be removed post-release - used to get nightly snapshot build.
+        maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/corda-dev' }
+        maven { url 'https://jitpack.io' }
+//        maven { url 'http://bluebank-nexus.uksouth.cloudapp.azure.com/repository/maven-public/'}
+    }
 }
 
 apply plugin: 'kotlin'
@@ -47,52 +50,34 @@ apply plugin: 'net.corda.plugins.quasar-utils'
 sourceSets {
     main {
         resources {
-            srcDir "config/dev"
-        }
-    }
-    test {
-        resources {
-            srcDir "config/test"
-        }
-    }
-    integrationTest {
-        kotlin {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/integrationTest/kotlin')
+            srcDir rootProject.file("config/dev")
         }
     }
 }
-
-//configurations {
-//    integrationTestCompile.extendsFrom testCompile
-//    integrationTestRuntime.extendsFrom testRuntime
-//}
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
-    testCompile "junit:junit:$junit_version"
 
     // Corda integration dependencies
     cordaCompile "$corda_release_group:corda-core:$corda_release_version"
-    cordaCompile "$corda_release_group:corda-finance:$corda_release_version"
+    cordaCompile "$corda_release_group:corda-finance-contracts:$corda_release_version"
+    cordaCompile "$corda_release_group:corda-finance-workflows:$corda_release_version"
     cordaCompile "$corda_release_group:corda-jackson:$corda_release_version"
     cordaCompile "$corda_release_group:corda-rpc:$corda_release_version"
     cordaCompile "$corda_release_group:corda-node-api:$corda_release_version"
+    cordaCompile "$corda_release_group:corda-webserver-impl:$corda_release_version"
     cordaRuntime "$corda_release_group:corda:$corda_release_version"
+    cordaRuntime "$corda_release_group:corda-webserver:$corda_release_version"
 
     // CorDapp dependencies
-    // Specify your CorDapp's dependencies below, including dependent CorDapps.
-    // We've defined Cash as a dependent CorDapp as an example.
-    cordapp "$corda_release_group:corda-finance:$corda_release_version"
-//    TODO: add dependant cordapps
+    cordapp "$corda_release_group:corda-finance-contracts:$corda_release_version"
+    cordapp "$corda_release_group:corda-finance-workflows:$corda_release_version"
     cordapp project(":common")
-}
+    cordapp project(":issuer")
 
-task integrationTest(type: Test, dependsOn: []) {
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
+    cordaCompile "org.apache.logging.log4j:log4j-slf4j-impl:${log4j_version}"
+    cordaCompile "org.apache.logging.log4j:log4j-web:${log4j_version}"
+    cordaCompile "org.slf4j:jul-to-slf4j:$slf4j_version"
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
@@ -104,8 +89,15 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
     }
 }
 
+cordapp {
+    info {
+        name "Pan African Payment Ledger"
+        vendor "Interswitch"
+        targetPlatformVersion 4
+        minimumPlatformVersion 4
+    }
+}
 
-// TODO: Before making this project a git repo, remove the deployNodes task
 task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
     directory "./build/nodes"
     node {
@@ -126,15 +118,14 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
             adminAddress("localhost:10046")
         }
         webPort 10007
+
         cordapps = [
                 "$project.group:common:$project.version",
                 "$project.group:issuer:$project.version",
-                "$corda_release_group:corda-finance:$corda_release_version"
+                "$corda_release_group:corda-finance-contracts:$corda_release_version",
+                "$corda_release_group:corda-finance-workflows:$corda_release_version"
         ]
         rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
-        extraConfig = [
-                custom: [issuableCurrencies: ["USD", "NGN"]],
-        ]
     }
 
     node {
@@ -147,7 +138,8 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         webPort 10010
         cordapps = [
                 "$project.group:common:$project.version",
-                "$corda_release_group:corda-finance:$corda_release_version"
+                "$corda_release_group:corda-finance-contracts:$corda_release_version",
+                "$corda_release_group:corda-finance-workflows:$corda_release_version"
         ]
         rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
     }
@@ -161,11 +153,28 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         webPort 10013
         cordapps = [
                 "$project.group:common:$project.version",
-                "$corda_release_group:corda-finance:$corda_release_version"
+                "$corda_release_group:corda-finance-contracts:$corda_release_version",
+                "$corda_release_group:corda-finance-workflows:$corda_release_version"
         ]
         rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
     }
 }
+
+task setHttpProxyFromEnv {
+    def map = ['HTTP_PROXY': 'http', 'HTTPS_PROXY': 'https']
+    for (e in System.getenv()) {
+        def key = e.key.toUpperCase()
+        if (key in map) {
+            def base = map[key]
+            def url = e.value.toURL()
+            println " - systemProp.${base}.proxy=${url.host}:${url.port}"
+            System.setProperty("${base}.proxyHost", url.host.toString())
+            System.setProperty("${base}.proxyPort", url.port.toString())
+        }
+    }
+}
+
+build.dependsOn setHttpProxyFromEnv
 
 //task runTemplateClient(type: JavaExec) {
 //    classpath = sourceSets.main.runtimeClasspath
