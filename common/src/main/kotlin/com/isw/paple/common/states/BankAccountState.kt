@@ -1,8 +1,10 @@
 package com.isw.paple.common.states
 
+import com.isw.paple.common.contracts.BankAccountContract
 import com.isw.paple.common.schemas.BankAccountStateSchemaV1
 import com.isw.paple.common.types.AccountNumber
 import com.isw.paple.common.types.BankAccountType
+import net.corda.core.contracts.BelongsToContract
 import net.corda.core.contracts.LinearState
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.AbstractParty
@@ -15,6 +17,7 @@ import net.corda.core.schemas.QueryableState
 import java.time.Instant
 import java.util.*
 
+@BelongsToContract(BankAccountContract::class)
 data class BankAccountState(
         val owner: Party,
         val country: String,
