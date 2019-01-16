@@ -1,3 +1,5 @@
 rootProject.name = 'paple'
 include 'common'
 include 'issuer'
+include 'gateway'
+include 'clients'

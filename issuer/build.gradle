@@ -4,8 +4,8 @@ apply plugin: 'net.corda.plugins.cordformation'
 apply plugin: 'net.corda.plugins.quasar-utils'
 
 cordapp {
-    targetPlatformVersion 4
-    minimumPlatformVersion 4
+    targetPlatformVersion corda_platform_version.toInteger()
+    minimumPlatformVersion corda_platform_version.toInteger()
     workflow {
         name "Paple Issuer Specific Workflows"
         vendor "Interswitch"
@@ -46,6 +46,7 @@ dependencies {
 
     // Corda dependencies
     cordaCompile "$corda_release_group:corda-core:$corda_release_version"
+    cordaCompile "$corda_release_group:corda-finance-contracts:$corda_release_version"
     cordaCompile "$corda_release_group:corda-finance-workflows:$corda_release_version"
     cordaCompile "$corda_release_group:corda-jackson:$corda_release_version"
     cordaCompile "$corda_release_group:corda-node-api:$corda_release_version"
