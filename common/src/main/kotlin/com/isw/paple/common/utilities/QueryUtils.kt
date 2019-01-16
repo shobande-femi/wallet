@@ -1,6 +1,8 @@
 package com.isw.paple.common.utilities
 
+import com.isw.paple.common.schemas.RecognisedIssuerStateSchemaV1
 import com.isw.paple.common.schemas.WalletStateSchemaV1
+import com.isw.paple.common.states.RecognisedIssuerState
 import com.isw.paple.common.states.WalletState
 import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.StateAndRef
@@ -15,6 +17,14 @@ import net.corda.core.node.services.vault.builder
 fun getWalletStateByWalletId(walletId: String, services: ServiceHub): StateAndRef<WalletState>? {
     val states = getState<WalletState>(services) { generalCriteria ->
         val additionalCriteria = QueryCriteria.VaultCustomQueryCriteria(WalletStateSchemaV1.PersistentWalletState::walletId.equal(walletId))
+        generalCriteria.and(additionalCriteria)
+    }
+    return states.singleOrNull()
+}
+
+fun getRecognisedIssuerStateByIssuerName(issuer: String, services: ServiceHub): StateAndRef<RecognisedIssuerState>? {
+    val states = getState<RecognisedIssuerState>(services) { generalCriteria ->
+        val additionalCriteria = QueryCriteria.VaultCustomQueryCriteria(RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState::issuer.equal(issuer))
         generalCriteria.and(additionalCriteria)
     }
     return states.singleOrNull()
