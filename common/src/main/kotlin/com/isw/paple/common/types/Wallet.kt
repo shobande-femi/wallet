@@ -9,12 +9,12 @@ import java.util.*
 @CordaSerializable
 data class Wallet(
     val walletId: String,
-    val createdBy: Party,
+    val owner: Party,
     val amount: Amount<Currency>,
     val status: WalletStatus,
     val type: WalletType
 )
 
-fun Wallet.toState(owner: Party): WalletState {
+fun Wallet.toState(createdBy: Party): WalletState {
     return WalletState(owner, walletId, createdBy, amount, status, type)
 }

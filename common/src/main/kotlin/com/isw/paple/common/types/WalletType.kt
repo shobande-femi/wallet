@@ -4,5 +4,9 @@ import net.corda.core.serialization.CordaSerializable
 
 @CordaSerializable
 enum class WalletType {
-    GATEWAY_OWNED
+    UNKNOWN,
+    ISSUER_OWNED,
+    GATEWAY_OWNED,
+    LIQUIDITY_PROVIDER_OWNED,
+    REGULAR_USER_OWNED
 }

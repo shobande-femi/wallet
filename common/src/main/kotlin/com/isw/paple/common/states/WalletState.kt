@@ -1,9 +1,11 @@
 package com.isw.paple.common.states
 
+import com.isw.paple.common.contracts.WalletContract
 import com.isw.paple.common.schemas.WalletStateSchemaV1
 import com.isw.paple.common.types.WalletStatus
 import com.isw.paple.common.types.WalletType
 import net.corda.core.contracts.Amount
+import net.corda.core.contracts.BelongsToContract
 import net.corda.core.contracts.LinearState
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.AbstractParty
@@ -14,6 +16,7 @@ import net.corda.core.schemas.QueryableState
 import java.time.Instant
 import java.util.*
 
+@BelongsToContract(WalletContract::class)
 data class WalletState (
     val owner: Party,
     val createdBy: Party,
@@ -34,7 +37,7 @@ data class WalletState (
         amount: Amount<Currency>,
         status: WalletStatus,
         type: WalletType
-    ) : this(owner, createdBy, amount, status, type, false, listOf(owner), UniqueIdentifier(walletId))
+    ) : this(owner, createdBy, amount, status, type, false, listOf(owner, createdBy), UniqueIdentifier(walletId))
 
     override fun generateMappedObject(schema: MappedSchema): PersistentState {
         return when (schema) {
