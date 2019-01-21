@@ -1,4 +1,4 @@
-package com.isw.paple.gateway
+package com.isw.paple.workflows
 
 import com.isw.paple.common.states.RecognisedIssuerState
 import net.corda.core.node.services.queryBy

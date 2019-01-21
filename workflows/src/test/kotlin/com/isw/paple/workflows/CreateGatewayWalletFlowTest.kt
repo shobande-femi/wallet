@@ -1,4 +1,4 @@
-package com.isw.paple.gateway
+package com.isw.paple.workflows
 
 import com.isw.paple.common.states.WalletState
 import com.isw.paple.common.types.Wallet
@@ -12,7 +12,7 @@ import net.corda.testing.node.StartedMockNode
 import org.junit.Test
 import kotlin.test.assertEquals
 
-class CreateGatewayWalletTest: FlowTestsBase() {
+class CreateGatewayWalletFlowTest: FlowTestsBase() {
     @Test
     fun `issuer creates gateway wallet`() {
         testCreateGatewayWallet(issuerNode, gatewayANode)
