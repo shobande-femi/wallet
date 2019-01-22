@@ -106,7 +106,7 @@ object CreateWalletFlow {
                     require(wallet.walletId == outputState.linearId.externalId) {"wallet Id doesn't match initial value"}
                     require(wallet.type == outputState.type) {"wallet type doesn't match initial value"}
                     require(gatewaySession.counterparty == outputState.owner) {"Gateway signing this transaction must be owner"}
-                    require(wallet.amount == outputState.amount) {"wallet amount doesn't match initial value"}
+                    require(wallet.balance == outputState.balance) {"wallet balance doesn't match initial value"}
                     require(wallet.status == outputState.status) {"wallet status doesn't match initial value"}
                 }
             }
@@ -208,7 +208,7 @@ object CreateWalletFlow {
             return issuerSession.receive<Wallet>().unwrap {
                 progressTracker.currentStep = VALIDATING
                 require(it.owner == ourIdentity) {"We must own this wallet before signing it's creation"}
-                require(it.amount.quantity == 0L) {"Wallet funding and creation cannot occur simultaneously"}
+                require(it.balance.quantity == 0L) {"Wallet funding and creation cannot occur simultaneously"}
                 require(it.type == WalletType.GATEWAY_OWNED) {"Wallet type must be workflows owned"}
                 it
             }

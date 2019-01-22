@@ -21,8 +21,8 @@ object WalletStateSchemaV1 : MappedSchema(
         var owner: String,
         @Column(name = "created_by")
         var createdBy: String,
-        @Column(name = "amount")
-        var amount: String,
+        @Column(name = "balance")
+        var balance: String,
         @Column(name = "currency")
         var currency: String,
         @Column(name = "status")
@@ -44,7 +44,7 @@ object WalletStateSchemaV1 : MappedSchema(
         constructor() : this(
             owner = "",
             createdBy = "",
-            amount = "",
+            balance = "",
             currency = "",
             status = "",
             type = "",

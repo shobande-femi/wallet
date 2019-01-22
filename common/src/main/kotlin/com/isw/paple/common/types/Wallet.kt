@@ -10,11 +10,11 @@ import java.util.*
 data class Wallet(
     val walletId: String,
     val owner: Party,
-    val amount: Amount<Currency>,
+    val balance: Amount<Currency>,
     val status: WalletStatus,
     val type: WalletType
 )
 
 fun Wallet.toState(createdBy: Party): WalletState {
-    return WalletState(owner, walletId, createdBy, amount, status, type)
+    return WalletState(owner, walletId, createdBy, balance, status, type)
 }

@@ -1,7 +1,6 @@
 package com.isw.paple.common.contracts
 
 import com.isw.paple.common.states.WalletState
-import com.isw.paple.common.types.WalletStatus
 import com.isw.paple.common.types.WalletType
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
@@ -40,10 +39,10 @@ class WalletContract : Contract {
 
         //Wallet specific constraints
         val walletState = tx.outputStates.single() as WalletState
-        "Wallet creation and funding must be done separately. Hence, amount must be zero" using (walletState.amount.quantity == 0L)
+        "Wallet creation and funding must be done separately. Hence, balance must be zero" using (walletState.balance.quantity == 0L)
 
         // TODO: find better way of doing this
-        "Only NGN and USD are supported" using (walletState.amount.token.toString() in allowedCurrencies)
+        "Only NGN and USD are supported" using (walletState.balance.token.toString() in allowedCurrencies)
 
         "Wallet must be unverified" using (!walletState.verified)
 

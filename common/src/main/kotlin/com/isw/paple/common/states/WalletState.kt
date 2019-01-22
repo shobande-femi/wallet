@@ -20,7 +20,7 @@ import java.util.*
 data class WalletState (
     val owner: Party,
     val createdBy: Party,
-    val amount: Amount<Currency>,
+    val balance: Amount<Currency>,
     val status: WalletStatus,
     val type: WalletType,
     val verified: Boolean,
@@ -34,18 +34,18 @@ data class WalletState (
         owner: Party,
         walletId: String,
         createdBy: Party,
-        amount: Amount<Currency>,
+        balance: Amount<Currency>,
         status: WalletStatus,
         type: WalletType
-    ) : this(owner, createdBy, amount, status, type, false, listOf(owner, createdBy), UniqueIdentifier(walletId))
+    ) : this(owner, createdBy, balance, status, type, false, listOf(owner, createdBy), UniqueIdentifier(walletId))
 
     override fun generateMappedObject(schema: MappedSchema): PersistentState {
         return when (schema) {
             is WalletStateSchemaV1 -> WalletStateSchemaV1.PersistentWalletState(
                 owner = owner.name.toString(),
                 createdBy = createdBy.name.toString(),
-                amount = amount.quantity.toString(),
-                currency = amount.token.toString(),
+                balance = balance.quantity.toString(),
+                currency = balance.token.toString(),
                 status = status.name,
                 type = type.name,
                 verified = verified,
