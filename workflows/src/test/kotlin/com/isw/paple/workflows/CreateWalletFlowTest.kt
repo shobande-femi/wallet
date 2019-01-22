@@ -12,7 +12,7 @@ import net.corda.testing.node.StartedMockNode
 import org.junit.Test
 import kotlin.test.assertEquals
 
-class CreateGatewayWalletFlowTest: FlowTestsBase() {
+class CreateWalletFlowTest: FlowTestsBase() {
     @Test
     fun `issuer creates gateway wallet`() {
         testCreateGatewayWallet(issuerNode, gatewayANode)
