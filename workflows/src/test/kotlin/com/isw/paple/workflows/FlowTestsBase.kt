@@ -1,7 +1,7 @@
 package com.isw.paple.workflows
 
 import com.isw.paple.common.types.Wallet
-import com.isw.paple.workflows.flows.AddRecognisedIssuer
+import com.isw.paple.workflows.flows.AddRecognisedIssuerFlow
 import com.isw.paple.workflows.flows.CreateWalletFlow
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
@@ -59,7 +59,7 @@ abstract class FlowTestsBase {
     fun tearDown() = network.stopNodes()
 
     fun gatewayNodeAddsRecognisedIssuer(issuerParty: Party, gatewayNode: StartedMockNode): SignedTransaction {
-        val flow = AddRecognisedIssuer.Initiator(issuerParty)
+        val flow = AddRecognisedIssuerFlow.Initiator(issuerParty)
         val future = gatewayNode.startFlow(flow)
         network.runNetwork()
         return future.get()

@@ -7,7 +7,7 @@ import net.corda.testing.node.StartedMockNode
 import org.junit.Test
 import kotlin.test.assertEquals
 
-class AddRecognisedIssuersTest: FlowTestsBase() {
+class AddRecognisedIssuerFlowTest: FlowTestsBase() {
 
     @Test
     fun `gateways correctly add recognised issuers`() {

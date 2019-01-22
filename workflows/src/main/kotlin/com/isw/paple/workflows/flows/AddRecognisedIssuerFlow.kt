@@ -15,7 +15,7 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 
-object AddRecognisedIssuer {
+object AddRecognisedIssuerFlow {
     @InitiatingFlow
     @StartableByRPC
     class Initiator(private val issuerParty: Party) : FlowLogic<SignedTransaction>() {
