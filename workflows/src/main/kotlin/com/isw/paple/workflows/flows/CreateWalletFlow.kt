@@ -23,7 +23,7 @@ object CreateWalletFlow {
     @CordaSerializable
     data class AssembledTransaction(val tx: TransactionBuilder)
 
-    class UnrecognisedIssuerException(unrecognisedIssuer: Party) : FlowException("Initiating party: $unrecognisedIssuer is an unrecognised Issuer")
+    class UnrecognizedIssuerException(unrecognisedIssuer: Party) : FlowException("Initiating party: $unrecognisedIssuer is an unrecognised Issuer")
 
     /**
      * Adds a new [Wallet] state to the ledger.
@@ -186,7 +186,7 @@ object CreateWalletFlow {
             //there is a prerecorded list of issuers that this gateway recognises
             //the [AddRecognisedIssuers] flow is used to add more issuers
             //we need to check that the party initiating this session is a recognised issuer
-            getRecognisedIssuerStateByIssuerName(issuerSession.counterparty.toString(), serviceHub) ?: throw UnrecognisedIssuerException(issuerSession.counterparty)
+            getRecognisedIssuerStateByIssuerName(issuerSession.counterparty.toString(), serviceHub) ?: throw UnrecognizedIssuerException(issuerSession.counterparty)
 
             progressTracker.currentStep = RECEIVING
             val wallet = receiveAndValidateWalletInfo()
