@@ -10,7 +10,7 @@ import net.corda.testing.core.singleIdentity
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetworkParameters
 import net.corda.testing.node.StartedMockNode
-import net.corda.testing.node.TestCordapp
+import net.corda.testing.node.internal.cordappsForPackages
 import org.junit.After
 import org.junit.Before
 
@@ -29,17 +29,11 @@ abstract class FlowTestsBase {
 
     @Before
     fun setup() {
-        network = MockNetwork(MockNetworkParameters(cordappsForAllNodes = listOf(
-            TestCordapp.findCordapp("com.isw.paple.workflows"),
-            TestCordapp.findCordapp("com.isw.paple.common")
-        )))
-//        network = MockNetwork(MockNetworkParameters(cordappsForAllNodes = cordappsForPackages(
-//            "com.isw.paple.workflows",
-//            "com.isw.paple.issuer",
-//            "com.isw.paple.common",
-//            javaClass.packageName
-//            )
-//        ))
+        network = MockNetwork(MockNetworkParameters(cordappsForAllNodes = cordappsForPackages(
+            "com.isw.paple.workflows",
+            "com.isw.paple.common"
+            )
+        ))
 
         notaryNode = network.defaultNotaryNode
         issuerNode = network.createPartyNode(CordaX500Name("ISW", "Victoria Island", "NG"))
@@ -71,7 +65,7 @@ abstract class FlowTestsBase {
         return future.get()
     }
 
-    fun issuerNodeCreatesGatewayWallet(wallet: Wallet): SignedTransaction {
+    fun issuerNodeCreatesWallet(wallet: Wallet): SignedTransaction {
         val flow = CreateWalletFlow.Initiator(wallet)
         val future = issuerNode.startFlow(flow)
         network.runNetwork()
