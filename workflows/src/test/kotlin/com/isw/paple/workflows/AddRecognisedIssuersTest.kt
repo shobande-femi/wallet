@@ -17,6 +17,8 @@ class AddRecognisedIssuersTest: FlowTestsBase() {
     private fun testAddRecognisedIssuer(gatewayNode: StartedMockNode) {
         val gatewayParty = gatewayNode.info.singleIdentity()
         gatewayNodeAddsRecognisedIssuer(issuerParty = issuer, gatewayNode = gatewayNode)
+        //TODO: add recognised issuer twice
+
         gatewayNode.transaction {
             val recognisedIssuers = gatewayNode.services.vaultService.queryBy<RecognisedIssuerState>().states
             assertEquals(1, recognisedIssuers.size)
