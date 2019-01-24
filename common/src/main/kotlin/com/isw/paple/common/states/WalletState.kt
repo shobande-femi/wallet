@@ -45,7 +45,7 @@ data class WalletState (
                 owner = owner.name.toString(),
                 createdBy = createdBy.name.toString(),
                 balance = balance.quantity.toString(),
-                currency = balance.token.toString(),
+                currency = balance.token.currencyCode,
                 status = status.name,
                 type = type.name,
                 verified = verified,
