@@ -1,7 +1,10 @@
 package com.isw.paple.workflows.flows
 
 import co.paralleluniverse.fibers.Suspendable
+import com.isw.paple.common.contracts.IssuanceContract
 import com.isw.paple.common.contracts.WalletContract
+import com.isw.paple.common.states.IssuanceState
+import com.isw.paple.common.types.IssuanceStatus
 import com.isw.paple.common.utilities.getWalletStateByWalletId
 import net.corda.core.contracts.*
 import net.corda.core.flows.*
@@ -72,10 +75,14 @@ object FundGatewayWalletFlow {
             val outputWalletState = inputWalletState.withNewBalance(inputWalletState.balance.plus(amount))
             val outputWalletStateAndContract = StateAndContract(outputWalletState, WalletContract.CONTRACT_ID)
 
-            val issueCommand = Command(Cash.Commands.Issue(), listOf(ourIdentity.owningKey))
+            val issueCashCommand = Command(Cash.Commands.Issue(), listOf(ourIdentity.owningKey))
             val issuerAndToken = Issued(PartyAndReference(ourIdentity, OpaqueBytes.of(0)), amount.token)
             val outputCashState = Cash.State(amount = Amount(amount.quantity, issuerAndToken), owner = inputWalletState.owner)
             val outputCashStateAndContract = StateAndContract(outputCashState, Cash.PROGRAM_ID)
+
+            val createIssuanceCommand = Command(IssuanceContract.Create(), listOf(ourIdentity.owningKey, inputWalletState.owner.owningKey))
+            val outputIssuanceState = IssuanceState(ourIdentity, inputWalletState.owner, amount, IssuanceStatus.UNKNOWN)
+            val outputIssuanceStateAndContract = StateAndContract(outputIssuanceState, IssuanceContract.CONTRACT_ID)
 
             //TODO: update the lastUpdated field on wallet state
             progressTracker.currentStep = TX_BUILDER
@@ -84,8 +91,12 @@ object FundGatewayWalletFlow {
                     fundCommand,
                     inputWalletStateAndRef,
                     outputWalletStateAndContract,
-                    issueCommand,
-                    outputCashStateAndContract
+
+                    issueCashCommand,
+                    outputCashStateAndContract,
+
+                    createIssuanceCommand,
+                    outputIssuanceStateAndContract
                 )
 
             logger.info("Verifying tx")
