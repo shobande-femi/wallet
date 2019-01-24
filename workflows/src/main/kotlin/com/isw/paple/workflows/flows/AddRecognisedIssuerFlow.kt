@@ -40,8 +40,7 @@ object AddRecognisedIssuerFlow {
             )
         }
 
-        override val progressTracker: ProgressTracker =
-            tracker()
+        override val progressTracker: ProgressTracker = tracker()
 
         @Suspendable
         override fun call(): SignedTransaction {
@@ -66,12 +65,12 @@ object AddRecognisedIssuerFlow {
             val command = Command(RecognisedIssuerContract.Add(), listOf(ourIdentity.owningKey))
             val outputStateAndContract = StateAndContract(recognisedIssuerState, RecognisedIssuerContract.CONTRACT_ID)
             progressTracker.currentStep = TX_BUILDER
-            val unsignedTransaction = TransactionBuilder(notary = notary).withItems(command, outputStateAndContract)
+            val txBuilder = TransactionBuilder(notary = notary).withItems(command, outputStateAndContract)
 
             // TODO: verify transaction
 
             progressTracker.currentStep = TX_SIGNING
-            val signedTransaction = serviceHub.signInitialTransaction(unsignedTransaction)
+            val signedTransaction = serviceHub.signInitialTransaction(txBuilder)
 
             progressTracker.currentStep = FINALISING
             return subFlow(FinalityFlow(signedTransaction, listOf()))

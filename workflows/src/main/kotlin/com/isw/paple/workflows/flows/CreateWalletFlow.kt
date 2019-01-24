@@ -35,7 +35,7 @@ object CreateWalletFlow {
 
         companion object {
             // TODO: fine tune progress tracker
-            object FLOW_SESSION: ProgressTracker.Step("Initiation flow session with gateway party")
+            object FLOW_SESSION: ProgressTracker.Step("Initiation flow session with counter party")
             object NOTARY_ID : ProgressTracker.Step("Getting Notary Identity")
             object GENERATING : ProgressTracker.Step("Generating tx")
             object VERIFYING: ProgressTracker.Step("Verifying tx")
@@ -99,6 +99,7 @@ object CreateWalletFlow {
             // Of course, the issuer must validate the authenticity of such transaction before appending its signature
             progressTracker.currentStep = VALIDATE_AND_SIGN
             val signTransactionFlow = object : SignTransactionFlow(gatewaySession, VALIDATE_AND_SIGN.childProgressTracker()) {
+                @Suspendable
                 override fun checkTransaction(stx: SignedTransaction) {
                     val ledgerTransaction = stx.toLedgerTransaction(serviceHub, false)
                     val outputState = ledgerTransaction.outputsOfType<WalletState>().single()
@@ -122,9 +123,9 @@ object CreateWalletFlow {
             // Issuer owned wallets may be for collecting transaction fees, or whatever reason the issuer deems fit
             // Subsequently, issuer owned wallets should be broadcasted to network participants
 
-            val unsignedTx = assembleTx(wallet, ourIdentity)
+            val txBuilder = assembleTx(wallet, ourIdentity)
             progressTracker.currentStep = SIGNING
-            val signedTx = serviceHub.signInitialTransaction(unsignedTx.tx)
+            val signedTx = serviceHub.signInitialTransaction(txBuilder.tx)
 
             progressTracker.currentStep = FINALISING
             return subFlow(FinalityFlow(transaction = signedTx, sessions = listOf()))
@@ -140,12 +141,12 @@ object CreateWalletFlow {
 
             val command = Command(WalletContract.Create(), listOf(issuerParty.owningKey))
             val outputStateAndContract = StateAndContract(walletState, WalletContract.CONTRACT_ID)
-            val unsignedTx = TransactionBuilder(notary = notary).withItems(command, outputStateAndContract)
+            val txBuilder = TransactionBuilder(notary = notary).withItems(command, outputStateAndContract)
 
             progressTracker.currentStep = VERIFYING
-            unsignedTx.verify(serviceHub)
+            txBuilder.verify(serviceHub)
 
-            return AssembledTransaction(unsignedTx)
+            return AssembledTransaction(txBuilder)
         }
     }
 
@@ -193,8 +194,8 @@ object CreateWalletFlow {
 
             // Put together a proposed transaction that performs wallet creation.
             progressTracker.currentStep = SIGNING
-            val unsignedTx = assembleSharedTx(wallet, issuerSession.counterparty)
-            val partiallySignedTx = serviceHub.signInitialTransaction(unsignedTx.tx)
+            val txBuilder = assembleSharedTx(wallet, issuerSession.counterparty)
+            val partiallySignedTx = serviceHub.signInitialTransaction(txBuilder.tx)
 
             progressTracker.currentStep = COLLECTING_SIGNATURES
             val signedTx = subFlow(CollectSignaturesFlow(partiallySignedTx, listOf(issuerSession)))
@@ -225,9 +226,9 @@ object CreateWalletFlow {
 
             val command = Command(WalletContract.Create(), listOf(issuerParty.owningKey, ourIdentity.owningKey))
             val outputStateAndContract = StateAndContract(walletState, WalletContract.CONTRACT_ID)
-            val unsignedTx = TransactionBuilder(notary = notary).withItems(command, outputStateAndContract)
+            val txBuilder = TransactionBuilder(notary = notary).withItems(command, outputStateAndContract)
 
-            return AssembledTransaction(unsignedTx)
+            return AssembledTransaction(txBuilder)
         }
     }
 }
