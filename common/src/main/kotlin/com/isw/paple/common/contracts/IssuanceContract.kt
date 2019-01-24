@@ -13,6 +13,7 @@ class IssuanceContract : Contract {
 
     companion object {
         const val CONTRACT_ID = "com.isw.paple.common.contracts.IssuanceContract"
+        val ISSUANCE_LIMIT = mapOf("USD" to 100*100, "NGN" to 50000*100)
     }
 
     interface Commands: CommandData
@@ -37,13 +38,16 @@ class IssuanceContract : Contract {
         val outputCashState = tx.outputsOfType<Cash.State>().single()
         val outputIssuanceState = tx.outputsOfType<IssuanceState>().single()
 
-        "Wallet to be funded must be verified" using (inputWalletState.verified)
+        //TODO: flow for verifying wallets must be written before enabling this contract condition
+//        "Wallet to be funded must be verified" using (inputWalletState.verified)
+
         "Self issuance not allowed" using (inputWalletState.owner != inputWalletState.createdBy)
         "Can only issue to gateway owned wallets" using (inputWalletState.type == WalletType.GATEWAY_OWNED)
         "Only difference allowed between input and output wallet states is balance" using (inputWalletState.withNewBalance(outputWalletState.balance) == outputWalletState)
         "output wallet balance must be greater than input wallet balance" using (outputWalletState.balance > inputWalletState.balance)
 
         val balanceDiff = outputWalletState.balance.minus(inputWalletState.balance)
+        "amount exceeds issuance limit" using (balanceDiff.quantity <= ISSUANCE_LIMIT.getValue(balanceDiff.token.currencyCode))
         "Difference between output and input balances must be same as amount issued " using (outputIssuanceState.amount == balanceDiff)
         "Recipient of issuance must be same as wallet owner" using (outputIssuanceState.recipient == inputWalletState.owner)
 
