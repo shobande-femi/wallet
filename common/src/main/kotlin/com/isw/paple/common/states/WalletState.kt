@@ -37,7 +37,7 @@ data class WalletState (
         balance: Amount<Currency>,
         status: WalletStatus,
         type: WalletType
-    ) : this(owner, createdBy, balance, status, type, false, listOf(owner, createdBy), UniqueIdentifier(walletId))
+    ) : this(owner, createdBy, balance, status, type, false, setOf(owner, createdBy).toList(), UniqueIdentifier(walletId))
 
     override fun generateMappedObject(schema: MappedSchema): PersistentState {
         return when (schema) {
@@ -59,4 +59,19 @@ data class WalletState (
     }
 
     override fun supportedSchemas(): Iterable<MappedSchema> = listOf(WalletStateSchemaV1)
+
+    fun withNewBalance(balance: Amount<Currency>): WalletState {
+        return copy(
+            owner = owner,
+            createdBy = createdBy,
+            balance = balance,
+            status = status,
+            type = type,
+            verified = verified,
+            participants = participants,
+            linearId = linearId,
+            createdAt = createdAt,
+            lastUpdated = lastUpdated
+        )
+    }
 }
