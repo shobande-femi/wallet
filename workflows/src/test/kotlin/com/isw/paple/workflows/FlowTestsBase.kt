@@ -3,6 +3,8 @@ package com.isw.paple.workflows
 import com.isw.paple.common.types.Wallet
 import com.isw.paple.workflows.flows.AddRecognisedIssuerFlow
 import com.isw.paple.workflows.flows.CreateWalletFlow
+import com.isw.paple.workflows.flows.FundGatewayWalletFlow
+import net.corda.core.contracts.Amount
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
@@ -13,6 +15,7 @@ import net.corda.testing.node.StartedMockNode
 import net.corda.testing.node.internal.cordappsForPackages
 import org.junit.After
 import org.junit.Before
+import java.util.*
 
 abstract class FlowTestsBase {
     private lateinit var network: MockNetwork
@@ -31,7 +34,8 @@ abstract class FlowTestsBase {
     fun setup() {
         network = MockNetwork(MockNetworkParameters(cordappsForAllNodes = cordappsForPackages(
             "com.isw.paple.workflows",
-            "com.isw.paple.common"
+            "com.isw.paple.common",
+            "net.corda.finance"
             )
         ))
 
@@ -45,7 +49,10 @@ abstract class FlowTestsBase {
 //        gatewayA = gatewayANode.info.singleIdentity()
 //        gatewayB = gatewayBNode.info.singleIdentity()
 
-        val responseFlows = listOf(CreateWalletFlow.Responder::class.java)
+        val responseFlows = listOf(
+            CreateWalletFlow.Responder::class.java,
+            FundGatewayWalletFlow.Responder::class.java
+        )
         listOf(gatewayANode, gatewayBNode).forEach {
             for (flow in responseFlows) {
                 it.registerInitiatedFlow(flow)
@@ -67,6 +74,13 @@ abstract class FlowTestsBase {
 
     fun issuerNodeCreatesWallet(wallet: Wallet): SignedTransaction {
         val flow = CreateWalletFlow.Initiator(wallet)
+        val future = issuerNode.startFlow(flow)
+        network.runNetwork()
+        return future.get()
+    }
+
+    fun issuerNodeFundsGatewayWallet(walletId: String, amount: Amount<Currency>): SignedTransaction {
+        val flow = FundGatewayWalletFlow.Initiator(walletId, amount)
         val future = issuerNode.startFlow(flow)
         network.runNetwork()
         return future.get()

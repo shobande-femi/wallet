@@ -18,7 +18,7 @@ class WalletContract : Contract {
 
     interface Commands : CommandData
     class Create : Commands
-//    class Update : Commands
+    class Fund : Commands
 
     // TODO: Implement Contract Code
     override fun verify(tx: LedgerTransaction) {
@@ -27,7 +27,7 @@ class WalletContract : Contract {
 
         when (walletCommand.value) {
             is Create -> verifyCreate(tx, signers)
-//            is Update -> verifyUpdate(tx, setOfSigners)
+            is Fund -> verifyFund(tx, signers)
             else -> throw IllegalArgumentException("Unrecognised command.")
         }
     }
@@ -61,4 +61,7 @@ class WalletContract : Contract {
         "Wallet owner must sign this transaction" using (signers.contains(walletState.owner.owningKey))
     }
 
+    private fun verifyFund(tx: LedgerTransaction, signers: Set<PublicKey>) {
+        //TODO: contract implementation
+    }
 }
