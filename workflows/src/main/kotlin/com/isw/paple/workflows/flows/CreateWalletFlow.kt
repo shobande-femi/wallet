@@ -209,7 +209,7 @@ object CreateWalletFlow {
             return issuerSession.receive<Wallet>().unwrap {
                 progressTracker.currentStep = VALIDATING
                 require(it.owner == ourIdentity) {"We must own this wallet before signing it's creation"}
-                require(it.balance.quantity == 0L) {"Wallet funding and creation cannot occur simultaneously"}
+                require(it.balance.quantity == 0L) {"On wallet creation, wallet balance must be zero"}
                 require(it.type == WalletType.GATEWAY_OWNED) {"Wallet type must be workflows owned"}
                 it
             }

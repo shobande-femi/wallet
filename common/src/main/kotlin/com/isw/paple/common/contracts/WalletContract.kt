@@ -18,16 +18,15 @@ class WalletContract : Contract {
 
     interface Commands : CommandData
     class Create : Commands
-    class Fund : Commands
+    class IssueFunds : Commands
 
-    // TODO: Implement Contract Code
     override fun verify(tx: LedgerTransaction) {
         val walletCommand = tx.commands.requireSingleCommand<Commands>()
         val signers = walletCommand.signers.toSet()
 
         when (walletCommand.value) {
             is Create -> verifyCreate(tx, signers)
-            is Fund -> verifyFund(tx, signers)
+            is IssueFunds -> verifyIssueFunds(tx, signers)
             else -> throw IllegalArgumentException("Unrecognised command.")
         }
     }
@@ -39,7 +38,7 @@ class WalletContract : Contract {
 
         //Wallet specific constraints
         val walletState = tx.outputStates.single() as WalletState
-        "Wallet creation and funding must be done separately. Hence, balance must be zero" using (walletState.balance.quantity == 0L)
+        "On wallet creation, wallet balance must be zero" using (walletState.balance.quantity == 0L)
 
         // TODO: find better way of doing this
         "Only NGN and USD are supported" using (walletState.balance.token.toString() in allowedCurrencies)
@@ -61,7 +60,7 @@ class WalletContract : Contract {
         "Wallet owner must sign this transaction" using (signers.contains(walletState.owner.owningKey))
     }
 
-    private fun verifyFund(tx: LedgerTransaction, signers: Set<PublicKey>) {
+    private fun verifyIssueFunds(tx: LedgerTransaction, signers: Set<PublicKey>) {
         //TODO: contract implementation
     }
 }

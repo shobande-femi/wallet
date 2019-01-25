@@ -14,7 +14,7 @@ import net.corda.testing.core.singleIdentity
 import org.junit.Test
 import kotlin.test.assertEquals
 
-class FundGatewayWalletFlowTest: FlowTestsBase() {
+class IssueFundsFlowTest: FlowTestsBase() {
     @Test
     fun `fund gateway owned wallet`() {
         //TODO: refactor wallet creation into a function

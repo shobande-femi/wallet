@@ -3,7 +3,7 @@ package com.isw.paple.workflows
 import com.isw.paple.common.types.Wallet
 import com.isw.paple.workflows.flows.AddRecognisedIssuerFlow
 import com.isw.paple.workflows.flows.CreateWalletFlow
-import com.isw.paple.workflows.flows.FundGatewayWalletFlow
+import com.isw.paple.workflows.flows.IssueFundsFlow
 import net.corda.core.contracts.Amount
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
@@ -51,7 +51,7 @@ abstract class FlowTestsBase {
 
         val responseFlows = listOf(
             CreateWalletFlow.Responder::class.java,
-            FundGatewayWalletFlow.Responder::class.java
+            IssueFundsFlow.Responder::class.java
         )
         listOf(gatewayANode, gatewayBNode).forEach {
             for (flow in responseFlows) {
@@ -80,7 +80,7 @@ abstract class FlowTestsBase {
     }
 
     fun issuerNodeFundsGatewayWallet(walletId: String, amount: Amount<Currency>): SignedTransaction {
-        val flow = FundGatewayWalletFlow.Initiator(walletId, amount)
+        val flow = IssueFundsFlow.Initiator(walletId, amount)
         val future = issuerNode.startFlow(flow)
         network.runNetwork()
         return future.get()

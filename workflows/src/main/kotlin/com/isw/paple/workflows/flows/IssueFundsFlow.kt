@@ -15,7 +15,7 @@ import net.corda.core.utilities.ProgressTracker
 import net.corda.finance.contracts.asset.Cash
 import java.util.*
 
-object FundGatewayWalletFlow {
+object IssueFundsFlow {
 
     class NonExistentWalletException(walletId: String) : FlowException("Wallet with id: $walletId doesn't exist")
     class UnacceptableCurrencyException(walletId: String, currency: Currency) : FlowException("Wallet $walletId be funded with $currency")
@@ -54,7 +54,7 @@ object FundGatewayWalletFlow {
 
         @Suspendable
         override fun call(): SignedTransaction {
-            logger.info("Starting FundGatewayWalletFlow.Initiator")
+            logger.info("Starting IssueFundsFlow.Initiator")
 
             logger.info("Checking if wallet with $walletId exists")
             val inputWalletStateAndRef = getWalletStateByWalletId(walletId = walletId, services = serviceHub) ?: throw NonExistentWalletException(walletId)
@@ -71,7 +71,7 @@ object FundGatewayWalletFlow {
             val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
             logger.info("Constructing tx")
-            val fundCommand = Command(WalletContract.Fund(), listOf(ourIdentity.owningKey, inputWalletState.owner.owningKey))
+            val fundCommand = Command(WalletContract.IssueFunds(), listOf(ourIdentity.owningKey, inputWalletState.owner.owningKey))
             val outputWalletState = inputWalletState.withNewBalance(inputWalletState.balance.plus(amount))
             val outputWalletStateAndContract = StateAndContract(outputWalletState, WalletContract.CONTRACT_ID)
 
@@ -145,7 +145,7 @@ object FundGatewayWalletFlow {
 
         @Suspendable
         override fun call(): SignedTransaction {
-            logger.info("Starting FundGatewayWalletFlow.Responder")
+            logger.info("Starting IssueFundsFlow.Responder")
             progressTracker.currentStep = VALIDATE_AND_SIGN
 
             val signTxFlow = object : SignTransactionFlow(issuerSession, VALIDATE_AND_SIGN.childProgressTracker()) {
