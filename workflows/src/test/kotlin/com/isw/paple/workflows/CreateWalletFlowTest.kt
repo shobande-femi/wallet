@@ -35,7 +35,7 @@ class CreateWalletFlowTest: FlowTestsBase() {
                 val walletState = walletStates.single().state.data
 
                 assertEquals(walletState.balance, balance)
-                assertEquals(walletState.createdBy, issuer)
+                assertEquals(walletState.issuedBy, issuer)
                 assertEquals(walletState.owner, gatewayParty)
                 assertEquals(walletState.status, status)
                 assertEquals(walletState.verified, false)
@@ -75,7 +75,7 @@ class CreateWalletFlowTest: FlowTestsBase() {
             val walletState = walletStates.single().state.data
 
             assertEquals(walletState.balance, balance)
-            assertEquals(walletState.createdBy, issuer)
+            assertEquals(walletState.issuedBy, issuer)
             assertEquals(walletState.owner, issuer)
             assertEquals(walletState.status, status)
             assertEquals(walletState.verified, false)

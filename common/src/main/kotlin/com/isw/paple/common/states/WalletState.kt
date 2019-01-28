@@ -19,7 +19,7 @@ import java.util.*
 @BelongsToContract(WalletContract::class)
 data class WalletState (
     val owner: Party,
-    val createdBy: Party,
+    val issuedBy: Party,
     val balance: Amount<Currency>,
     val status: WalletStatus,
     val type: WalletType,
@@ -33,17 +33,17 @@ data class WalletState (
     constructor(
         owner: Party,
         walletId: String,
-        createdBy: Party,
+        issuedBy: Party,
         balance: Amount<Currency>,
         status: WalletStatus,
         type: WalletType
-    ) : this(owner, createdBy, balance, status, type, false, setOf(owner, createdBy).toList(), UniqueIdentifier(walletId))
+    ) : this(owner, issuedBy, balance, status, type, false, setOf(owner, issuedBy).toList(), UniqueIdentifier(walletId))
 
     override fun generateMappedObject(schema: MappedSchema): PersistentState {
         return when (schema) {
             is WalletStateSchemaV1 -> WalletStateSchemaV1.PersistentWalletState(
                 owner = owner.name.toString(),
-                createdBy = createdBy.name.toString(),
+                issuedBy = issuedBy.name.toString(),
                 balance = balance.quantity.toString(),
                 currency = balance.token.currencyCode,
                 status = status.name,
@@ -63,7 +63,7 @@ data class WalletState (
     fun withNewBalance(balance: Amount<Currency>): WalletState {
         return copy(
             owner = owner,
-            createdBy = createdBy,
+            issuedBy = issuedBy,
             balance = balance,
             status = status,
             type = type,

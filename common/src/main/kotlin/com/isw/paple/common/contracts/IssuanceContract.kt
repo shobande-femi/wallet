@@ -41,7 +41,7 @@ class IssuanceContract : Contract {
         //TODO: flow for verifying wallets must be written before enabling this contract condition
 //        "Wallet receiving issuance must be verified" using (inputWalletState.verified)
 
-        "Self issuance not allowed" using (inputWalletState.owner != inputWalletState.createdBy)
+        "Self issuance not allowed" using (inputWalletState.owner != inputWalletState.issuedBy)
         "Can only issue to gateway owned wallets" using (inputWalletState.type == WalletType.GATEWAY_OWNED)
         "Only difference allowed between input and output wallet states is balance" using (inputWalletState.withNewBalance(outputWalletState.balance) == outputWalletState)
         "output wallet balance must be greater than input wallet balance" using (outputWalletState.balance > inputWalletState.balance)
@@ -54,7 +54,7 @@ class IssuanceContract : Contract {
         "Owner of cash must be same as wallet owner" using (outputCashState.owner == inputWalletState.owner)
         "output cash state must be same as amount issued" using (outputCashState.amount == Amount(balanceDiff.quantity, Issued(outputIssuanceState.issuer.ref(0), balanceDiff.token)))
 
-        "The creator of this wallet (i.e the issuer) must sign the transaction" using (signers.contains(inputWalletState.createdBy.owningKey))
+        "The creator of this wallet (i.e the issuer) must sign the transaction" using (signers.contains(inputWalletState.issuedBy.owningKey))
         "Wallet owner must sign this transaction" using (signers.contains(inputWalletState.owner.owningKey))
     }
 }

@@ -15,6 +15,6 @@ data class Wallet(
     val type: WalletType
 )
 
-fun Wallet.toState(createdBy: Party): WalletState {
-    return WalletState(owner, walletId, createdBy, balance, status, type)
+fun Wallet.toState(issuedBy: Party): WalletState {
+    return WalletState(owner, walletId, issuedBy, balance, status, type)
 }

@@ -24,7 +24,8 @@ object CreateWalletFlow {
     data class AssembledTransaction(val tx: TransactionBuilder)
 
     class UnrecognizedIssuerException(unrecognisedIssuer: Party) : FlowException("Initiating party: $unrecognisedIssuer is an unrecognised Issuer")
-
+    class UnspecifiedRecipient : FlowException("If wallet type is Gateway Owned, a recipient party other than our self must be provided")
+    class WeAreNotOwnerException: FlowException("Other than gateway wallet kinds, issuing party must be wallet owner")
     /**
      * Adds a new [Wallet] state to the ledger.
      * The state is always added as a "uni-lateral state" to the node calling this flow.
@@ -73,10 +74,12 @@ object CreateWalletFlow {
 
             return when (wallet.type) {
                 WalletType.GATEWAY_OWNED -> {
+                    if (wallet.owner == ourIdentity) throw UnspecifiedRecipient()
                     createGatewayOwnedWallet(wallet)
                 }
                 else -> {
-                    createWallet(wallet)
+                    if (wallet.owner != ourIdentity) throw WeAreNotOwnerException()
+                    createWallet()
                 }
             }
 
@@ -84,7 +87,7 @@ object CreateWalletFlow {
 
         @Suspendable
         private fun createGatewayOwnedWallet(wallet: Wallet) : SignedTransaction {
-            //Gateway party for which this wallet is being created be aware of the proposed
+            //Gateway party for which this wallet is being created must be aware of the proposed
             // wallet creation and sign its creation
             //Hence, a flow session with this gateway party should be started and the proposed wallet
             //object be sent to this gateway
@@ -104,6 +107,7 @@ object CreateWalletFlow {
                     val ledgerTransaction = stx.toLedgerTransaction(serviceHub, false)
                     val outputState = ledgerTransaction.outputsOfType<WalletState>().single()
 
+                    require(outputState.issuedBy == ourIdentity) {"If we sign its creation, we must be the issuer"}
                     require(wallet.walletId == outputState.linearId.externalId) {"wallet Id doesn't match initial value"}
                     require(wallet.type == outputState.type) {"wallet type doesn't match initial value"}
                     require(gatewaySession.counterparty == outputState.owner) {"Gateway signing this transaction must be owner"}
@@ -118,12 +122,12 @@ object CreateWalletFlow {
         }
 
         @Suspendable
-        private fun createWallet(wallet: Wallet) : SignedTransaction {
+        private fun createWallet() : SignedTransaction {
             // Only gateway wallet kinds require a signature other than the issuer's when creating them
             // Issuer owned wallets may be for collecting transaction fees, or whatever reason the issuer deems fit
             // Subsequently, issuer owned wallets should be broadcasted to network participants
 
-            val txBuilder = assembleTx(wallet, ourIdentity)
+            val txBuilder = assembleTx()
             progressTracker.currentStep = SIGNING
             val signedTx = serviceHub.signInitialTransaction(txBuilder.tx)
 
@@ -132,14 +136,14 @@ object CreateWalletFlow {
         }
 
         @Suspendable
-        private fun assembleTx(wallet: Wallet, issuerParty: Party): AssembledTransaction {
+        private fun assembleTx(): AssembledTransaction {
             progressTracker.currentStep = NOTARY_ID
             val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
             progressTracker.currentStep = GENERATING
-            val walletState = wallet.toState(createdBy = issuerParty)
+            val walletState = wallet.toState(issuedBy = ourIdentity)
 
-            val command = Command(WalletContract.Create(), listOf(issuerParty.owningKey))
+            val command = Command(WalletContract.Create(), listOf(ourIdentity.owningKey))
             val outputStateAndContract = StateAndContract(walletState, WalletContract.CONTRACT_ID)
             val txBuilder = TransactionBuilder(notary = notary).withItems(command, outputStateAndContract)
 
@@ -222,7 +226,7 @@ object CreateWalletFlow {
             val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
             progressTracker.currentStep = GENERATING
-            val walletState = wallet.toState(createdBy = issuerParty)
+            val walletState = wallet.toState(issuedBy = issuerParty)
 
             val command = Command(WalletContract.Create(), listOf(issuerParty.owningKey, ourIdentity.owningKey))
             val outputStateAndContract = StateAndContract(walletState, WalletContract.CONTRACT_ID)

@@ -47,16 +47,16 @@ class WalletContract : Contract {
 
         when (walletState.type) {
             WalletType.GATEWAY_OWNED -> {
-                "If wallet type is GatewayOwned, Issuer cannot be owner of wallet" using (walletState.owner != walletState.createdBy)
+                "If wallet type is GatewayOwned, Issuer cannot be owner of wallet" using (walletState.owner != walletState.issuedBy)
                 "There must be 2 signers" using (signers.size == 2)
             }
             else -> {
-                "Other than GatewayOwned wallet, Owner and CreatedBy must be same" using (walletState.owner == walletState.createdBy)
+                "Other than GatewayOwned wallet, Owner and IssuedBy must be same" using (walletState.owner == walletState.issuedBy)
                 "There must be 1 signer" using (signers.size == 1)
             }
         }
 
-        "The creator of this wallet (i.e the issuer) must sign the transaction" using (signers.contains(walletState.createdBy.owningKey))
+        "The creator of this wallet (i.e the issuer) must sign the transaction" using (signers.contains(walletState.issuedBy.owningKey))
         "Wallet owner must sign this transaction" using (signers.contains(walletState.owner.owningKey))
     }
 

@@ -19,8 +19,8 @@ object WalletStateSchemaV1 : MappedSchema(
     class PersistentWalletState(
         @Column(name = "owner")
         var owner: String,
-        @Column(name = "created_by")
-        var createdBy: String,
+        @Column(name = "issued_by")
+        var issuedBy: String,
         @Column(name = "balance")
         var balance: String,
         @Column(name = "currency")
@@ -43,7 +43,7 @@ object WalletStateSchemaV1 : MappedSchema(
         @Suppress("UNUSED")
         constructor() : this(
             owner = "",
-            createdBy = "",
+            issuedBy = "",
             balance = "",
             currency = "",
             status = "",
