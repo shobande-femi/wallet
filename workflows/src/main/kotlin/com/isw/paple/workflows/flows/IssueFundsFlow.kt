@@ -78,6 +78,7 @@ object IssueFundsFlow {
             val issueCashCommand = Command(Cash.Commands.Issue(), listOf(ourIdentity.owningKey))
             val issuerAndToken = Issued(PartyAndReference(ourIdentity, OpaqueBytes.of(0)), amount.token)
             val outputCashState = Cash.State(amount = Amount(amount.quantity, issuerAndToken), owner = inputWalletState.owner)
+            //TODO include onlyFromParties, to ensure gateways only accept cash issued from recognised issuers
             val outputCashStateAndContract = StateAndContract(outputCashState, Cash.PROGRAM_ID)
 
             val createIssuanceCommand = Command(IssuanceContract.Create(), listOf(ourIdentity.owningKey, inputWalletState.owner.owningKey))
