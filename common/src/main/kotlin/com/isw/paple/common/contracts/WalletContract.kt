@@ -19,6 +19,7 @@ class WalletContract : Contract {
     interface Commands : CommandData
     class Create : Commands
     class IssueFunds : Commands
+    class TransferFunds : Commands
 
     override fun verify(tx: LedgerTransaction) {
         val walletCommand = tx.commands.requireSingleCommand<Commands>()
@@ -27,6 +28,7 @@ class WalletContract : Contract {
         when (walletCommand.value) {
             is Create -> verifyCreate(tx, signers)
             is IssueFunds -> verifyIssueFunds(tx, signers)
+            is TransferFunds -> verifyTransferFunds(tx, signers)
             else -> throw IllegalArgumentException("Unrecognised command.")
         }
     }
@@ -61,6 +63,10 @@ class WalletContract : Contract {
     }
 
     private fun verifyIssueFunds(tx: LedgerTransaction, signers: Set<PublicKey>) {
+        //TODO: contract implementation
+    }
+
+    private fun verifyTransferFunds(tx: LedgerTransaction, signers: Set<PublicKey>) {
         //TODO: contract implementation
     }
 }
