@@ -2,11 +2,10 @@ package com.isw.paple.common.contracts
 
 import com.isw.paple.common.states.WalletState
 import com.isw.paple.common.types.WalletType
-import net.corda.core.contracts.CommandData
-import net.corda.core.contracts.Contract
-import net.corda.core.contracts.requireSingleCommand
-import net.corda.core.contracts.requireThat
+import net.corda.core.contracts.*
+import net.corda.core.contracts.Requirements.using
 import net.corda.core.transactions.LedgerTransaction
+import net.corda.finance.contracts.asset.Cash
 import java.security.PublicKey
 
 class WalletContract : Contract {
@@ -18,8 +17,8 @@ class WalletContract : Contract {
 
     interface Commands : CommandData
     class Create : Commands
-    class IssueFunds : Commands
-    class TransferFunds : Commands
+    class Fund : Commands
+    class Transfer : Commands
 
     override fun verify(tx: LedgerTransaction) {
         val walletCommand = tx.commands.requireSingleCommand<Commands>()
@@ -27,8 +26,8 @@ class WalletContract : Contract {
 
         when (walletCommand.value) {
             is Create -> verifyCreate(tx, signers)
-            is IssueFunds -> verifyIssueFunds(tx, signers)
-            is TransferFunds -> verifyTransferFunds(tx, signers)
+            is Fund -> verifyFund(tx, signers)
+            is Transfer -> verifyTransfer(tx, signers)
             else -> throw IllegalArgumentException("Unrecognised command.")
         }
     }
@@ -62,11 +61,28 @@ class WalletContract : Contract {
         "Wallet owner must sign this transaction" using (signers.contains(walletState.owner.owningKey))
     }
 
-    private fun verifyIssueFunds(tx: LedgerTransaction, signers: Set<PublicKey>) {
-        //TODO: contract implementation
+    private fun verifyFund(tx: LedgerTransaction, signers: Set<PublicKey>) {
+        //Shape constraints
+        val inputWalletStates = tx.inputsOfType<WalletState>()
+        val outputWalletStates = tx.outputsOfType<WalletState>()
+        "Tx must contain a single input wallet state" using (inputWalletStates.size == 1)
+        "Tx must contain a single output wallet state" using (outputWalletStates.size == 1)
+        val inputWalletState = inputWalletStates.single()
+        val outputWalletState = outputWalletStates.single()
+
+        val balanceDiff = outputWalletState.balance.minus(inputWalletState.balance)
+        "Only difference allowed between input and output wallet states is their balances" using (
+                inputWalletState.withNewBalance(inputWalletState.balance.plus(balanceDiff)) == outputWalletState)
+
+        val outputCashState = tx.outputsOfType<Cash.State>().single()
+        "Difference in wallet balance must be equal to output cash state, and issuer of cash must be same as issuer of wallet" using (
+                outputCashState.amount == Amount(balanceDiff.quantity, Issued(outputWalletState.issuedBy.ref(0), balanceDiff.token))
+                )
+        "Wallet owner must own cash states" using (outputCashState.owner == outputWalletState.owner)
+
     }
 
-    private fun verifyTransferFunds(tx: LedgerTransaction, signers: Set<PublicKey>) {
+    private fun verifyTransfer(tx: LedgerTransaction, signers: Set<PublicKey>) {
         //TODO: contract implementation
     }
 }
