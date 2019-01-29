@@ -77,7 +77,7 @@ object WalletToWalletTransferFlow {
             //TODO: check transfer limits, also check if wallet verified
 
             logger.info("Constructing tx")
-            val transferCommand = Command(WalletContract.TransferFunds(), listOf(inputSenderWalletState.owner.owningKey))
+            val transferCommand = Command(WalletContract.Transfer(), listOf(inputSenderWalletState.owner.owningKey))
             val (outputSenderWalletState, outputRecipientWalletState) = moveFunds(inputSenderWalletState, inputRecipientWalletState, transfer.amount)
             val outputSenderWalletStateAndContract = StateAndContract(outputSenderWalletState, WalletContract.CONTRACT_ID)
             val outputRecipientWalletStateAndContract = StateAndContract(outputRecipientWalletState, WalletContract.CONTRACT_ID)
