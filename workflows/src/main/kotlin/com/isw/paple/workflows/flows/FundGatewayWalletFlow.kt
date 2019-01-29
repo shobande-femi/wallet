@@ -4,8 +4,10 @@ import co.paralleluniverse.fibers.Suspendable
 import com.isw.paple.common.contracts.IssuanceContract
 import com.isw.paple.common.contracts.WalletContract
 import com.isw.paple.common.states.IssuanceState
+import com.isw.paple.common.states.WalletState
 import com.isw.paple.common.types.IssuanceStatus
-import com.isw.paple.common.utilities.getWalletStateByWalletId
+import com.isw.paple.common.types.WalletType
+import com.isw.paple.common.utilities.getWalletStateByWalletIdAndWalletType
 import net.corda.core.contracts.*
 import net.corda.core.flows.*
 import net.corda.core.transactions.SignedTransaction
@@ -15,11 +17,35 @@ import net.corda.core.utilities.ProgressTracker
 import net.corda.finance.contracts.asset.Cash
 import java.util.*
 
-object IssueFundsFlow {
+/**
+ * Issues some Cash to Gateway Owned Wallets
+ * Only the issuer is able to successfully initiate this flow as Gateways would not accept and Issuance unless it
+ * originates from a recognised Issuer.
+ * Before starting this flow, Gateways must can add a recognized Issuer by running the [AddRecognisedIssuerFlow]
+ *
+ */
+object FundGatewayWalletFlow {
 
-    class NonExistentWalletException(walletId: String) : FlowException("Wallet with id: $walletId doesn't exist")
-    class UnacceptableCurrencyException(walletId: String, currency: Currency) : FlowException("Wallet $walletId be funded with $currency")
-
+    /**
+     * Issues some Cash to Gateway Owned Wallets
+     * Only the issuer is able to successfully initiate this flow as Gateways would not accept and Issuance unless it
+     * originates from a recognised Issuer.
+     * Gateways can add a recognized Issuer by running the [AddRecognisedIssuerFlow]
+     *
+     * This flow follows this process
+     * 1. Fetch the gateway owned wallet by walletId
+     * 2. Every wallet is denominated in a specific currency. Hence, check that the currency being issued matches the
+     * destination wallet
+     * 3. The transaction to be built tries to accomplish 3 major things
+     *      i. Issue some Cash State, specifying the gateway as the owner
+     *      ii. Increase the gateway's wallet balance (essentially funding it)
+     *      iii. Create and Issuance Receipt
+     * 4. Send the built transaction to the gateway to append it's signature
+     *
+     *
+     * @param walletId Id of a wallet
+     * @param amount quantity of token(currency in this case) to issue to the gateway
+     */
     @InitiatingFlow
     @StartableByRPC
     class Initiator(private val walletId: String, private val amount: Amount<Currency>) : FlowLogic<SignedTransaction>() {
@@ -54,24 +80,55 @@ object IssueFundsFlow {
 
         @Suspendable
         override fun call(): SignedTransaction {
-            logger.info("Starting IssueFundsFlow.Initiator")
+            logger.info("Starting FundGatewayWalletFlow.Initiator")
 
             logger.info("Checking if wallet with $walletId exists")
-            val inputWalletStateAndRef = getWalletStateByWalletId(walletId = walletId, services = serviceHub) ?: throw NonExistentWalletException(walletId)
+            val inputWalletStateAndRef = getWalletStateByWalletIdAndWalletType(walletId = walletId, type = WalletType.GATEWAY_OWNED, services = serviceHub) ?: throw NonExistentWalletException(walletId)
 
-            val inputWalletState = inputWalletStateAndRef.state.data
+            val txBuilder = assembleTx(inputWalletStateAndRef)
+
+            logger.info("Verifying tx")
+            progressTracker.currentStep = TX_VERIFICATION
+            txBuilder.verify(serviceHub)
+
+            logger.info("Signing tx")
+            progressTracker.currentStep = SIGNING
+            val partiallySignedTx = serviceHub.signInitialTransaction(txBuilder)
+
+            logger.info("Initiating flow session")
+            progressTracker.currentStep = FLOW_SESSION
+            val gatewaySession = initiateFlow(inputWalletStateAndRef.state.data.owner)
+
+            logger.info("Collecting signatures from counter parties")
+            progressTracker.currentStep = COLLECTING_SIGNATURES
+            val signedTx = subFlow(CollectSignaturesFlow(partiallySignedTx, listOf(gatewaySession)))
+
+            logger.info("Finalising tx")
+            progressTracker.currentStep = FINALISING
+            return subFlow(FinalityFlow(transaction = signedTx, sessions = listOf(gatewaySession)))
+        }
+
+        private fun validate(inputWalletState: WalletState) {
+            //every wallet is denominated in a specific currency, ensure the currency being issued matches the wallet denomiation
             if (amount.token != inputWalletState.balance.token) {
                 throw UnacceptableCurrencyException(walletId, amount.token)
             }
 
             //TODO: funding limits and balance limits, also check if wallet verified
 
+        }
+
+        private fun assembleTx(inputWalletStateAndRef: StateAndRef<WalletState>): TransactionBuilder {
+            val inputWalletState = inputWalletStateAndRef.state.data
+
+            validate(inputWalletState)
+
             logger.info("Selecting notary identity")
             progressTracker.currentStep = NOTARY_ID
             val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
             logger.info("Constructing tx")
-            val fundCommand = Command(WalletContract.IssueFunds(), listOf(ourIdentity.owningKey, inputWalletState.owner.owningKey))
+            val fundCommand = Command(WalletContract.Fund(), listOf(ourIdentity.owningKey, inputWalletState.owner.owningKey))
             val outputWalletState = inputWalletState.withNewBalance(inputWalletState.balance.plus(amount))
             val outputWalletStateAndContract = StateAndContract(outputWalletState, WalletContract.CONTRACT_ID)
 
@@ -87,7 +144,7 @@ object IssueFundsFlow {
 
             //TODO: update the lastUpdated field on wallet state
             progressTracker.currentStep = TX_BUILDER
-            val txBuilder = TransactionBuilder(notary = notary)
+            return TransactionBuilder(notary = notary)
                 .withItems(
                     fundCommand,
                     inputWalletStateAndRef,
@@ -99,35 +156,17 @@ object IssueFundsFlow {
                     createIssuanceCommand,
                     outputIssuanceStateAndContract
                 )
-
-            logger.info("Verifying tx")
-            progressTracker.currentStep = TX_VERIFICATION
-            txBuilder.verify(serviceHub)
-
-            logger.info("Signing tx")
-            progressTracker.currentStep = SIGNING
-            val partiallySignedTx = serviceHub.signInitialTransaction(txBuilder)
-
-            logger.info("Input Wallet state is $inputWalletState")
-            logger.info("Output Wallet State is $outputWalletState")
-            logger.info("Output Cash State is $outputCashState")
-
-
-            logger.info("Initiating flow session")
-            progressTracker.currentStep = FLOW_SESSION
-            val gatewaySession = initiateFlow(inputWalletState.owner)
-
-            logger.info("Collecting signatures from counter parties")
-            progressTracker.currentStep = COLLECTING_SIGNATURES
-            val signedTx = subFlow(CollectSignaturesFlow(partiallySignedTx, listOf(gatewaySession)))
-
-            logger.info("Finalising tx")
-            progressTracker.currentStep = FINALISING
-            return subFlow(FinalityFlow(transaction = signedTx, sessions = listOf(gatewaySession)))
         }
 
     }
 
+    /**
+     * The gateway for whom funds are to be issued, receives the request to append it's signature to the
+     * transaction proposal.
+     * This gateway may perform extra validations over the transaction, then accept or decline to append it's signature
+     *
+     * @param issuerSession The session which is providing the transaction to sign
+     */
     @InitiatedBy(Initiator::class)
     class Responder(private val issuerSession: FlowSession) : FlowLogic<SignedTransaction>() {
 
@@ -146,30 +185,30 @@ object IssueFundsFlow {
 
         @Suspendable
         override fun call(): SignedTransaction {
-            logger.info("Starting IssueFundsFlow.Responder")
+            logger.info("Starting FundGatewayWalletFlow.Responder")
             progressTracker.currentStep = VALIDATE_AND_SIGN
-
             val signTxFlow = object : SignTransactionFlow(issuerSession, VALIDATE_AND_SIGN.childProgressTracker()) {
                 @Suspendable
                 override fun checkTransaction(stx: SignedTransaction) {
                     logger.info("Validating tx before appending signature")
-//                    val ledgerTx = stx.toLedgerTransaction(serviceHub, false)
-//                    val inputWalletState = ledgerTx.inputsOfType<WalletState>().single()
-//                    val outputWalletState = ledgerTx.outputsOfType<WalletState>().single()
-//                    val outputCashState = ledgerTx.outputsOfType<Cash.State>().single()
-//
-//                    require(outputWalletState.owner == ourIdentity) {"Gateway signing this transaction must be owner"}
-//                    require(outputWalletState.type == WalletType.GATEWAY_OWNED) {"Wallet type must be gateway owned"}
-//                    require(outputWalletState.balance > inputWalletState.balance)
-//
-//                    require(outputCashState.amount == outputWalletState.balance.minus(inputWalletState.balance)) {"difference in wallet balance must equal output cash state"}
-//                    require(outputCashState.owner == ourIdentity) {"gateway party must own the out cash states"}
-//                    require(outputCashState.exitKeys.contains(ourIdentity.owningKey)) {"gateway identity must be one of exit kets"}
+                    val ledgerTx = stx.toLedgerTransaction(serviceHub, false)
+
+                    require(ledgerTx.commandsOfType<WalletContract.Fund>().size == 1) {
+                        "Transaction must involve fund issuance to a wallet"
+                    }
+                    require(ledgerTx.commandsOfType<Cash.Commands.Issue>().size == 1) {
+                        "Transaction must involve cash issuance"
+                    }
+                    require(ledgerTx.commandsOfType<IssuanceContract.Create>().size == 1) {
+                        "Transaction must produce an issuance receipt"
+                    }
+                    require(ledgerTx.outputsOfType<WalletState>().single().owner == ourIdentity) {
+                        "Gateway signing this transaction must be wallet owner"
+                    }
                 }
             }
             logger.info("Appending signature")
             val txId = subFlow(signTxFlow).id
-//            return waitForLedgerCommit(txId)
 
             logger.info("Receiving finalised tx")
             progressTracker.currentStep = RECEIVE_FINALISED
@@ -177,4 +216,8 @@ object IssueFundsFlow {
         }
 
     }
+
+    class NonExistentWalletException(walletId: String) : FlowException("Wallet with id: $walletId doesn't exist")
+    class UnacceptableCurrencyException(walletId: String, currency: Currency) : FlowException("Wallet $walletId be funded with $currency")
+
 }
