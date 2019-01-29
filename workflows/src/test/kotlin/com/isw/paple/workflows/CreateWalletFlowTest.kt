@@ -16,12 +16,10 @@ class CreateWalletFlowTest: FlowTestsBase() {
     fun `create gateway owned wallet`() {
         val gatewayNode = gatewayANode
         val gatewayParty = gatewayNode.info.singleIdentity()
-        val walletId = "f2^n2#9N21-c'2+@cm20?scw2"
-        val balance = Amount(0, USD)
         val status = WalletStatus.UNKNOWN
         val type = WalletType.GATEWAY_OWNED
 
-        val wallet = Wallet(walletId, gatewayParty, balance, status, type)
+        val wallet = Wallet(walletId, gatewayParty, zeroBalance, status, type)
 
         //TODO: try creating a wallet before gateway node adds recognised issuer
         gatewayNodeAddsRecognisedIssuer(issuer, gatewayNode)
@@ -34,7 +32,7 @@ class CreateWalletFlowTest: FlowTestsBase() {
                 assertEquals(1, walletStates.size)
                 val walletState = walletStates.single().state.data
 
-                assertEquals(walletState.balance, balance)
+                assertEquals(walletState.balance, zeroBalance)
                 assertEquals(walletState.issuedBy, issuer)
                 assertEquals(walletState.owner, gatewayParty)
                 assertEquals(walletState.status, status)
@@ -60,11 +58,9 @@ class CreateWalletFlowTest: FlowTestsBase() {
     }
 
     private fun createWalletTest(walletType: WalletType) {
-        val walletId = "f2^n2#9N21-c'2+@cm20?scw2"
-        val balance = Amount(0, USD)
         val status = WalletStatus.UNKNOWN
 
-        val wallet = Wallet(walletId, issuer, balance, status, walletType)
+        val wallet = Wallet(walletId, issuer, zeroBalance, status, walletType)
 
         issuerNodeCreatesWallet(wallet)
         //TODO: add same wallet twice
@@ -74,7 +70,7 @@ class CreateWalletFlowTest: FlowTestsBase() {
             assertEquals(1, walletStates.size)
             val walletState = walletStates.single().state.data
 
-            assertEquals(walletState.balance, balance)
+            assertEquals(walletState.balance, zeroBalance)
             assertEquals(walletState.issuedBy, issuer)
             assertEquals(walletState.owner, issuer)
             assertEquals(walletState.status, status)

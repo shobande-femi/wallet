@@ -3,11 +3,13 @@ package com.isw.paple.workflows
 import com.isw.paple.common.types.Wallet
 import com.isw.paple.workflows.flows.AddRecognisedIssuerFlow
 import com.isw.paple.workflows.flows.CreateWalletFlow
-import com.isw.paple.workflows.flows.IssueFundsFlow
+import com.isw.paple.workflows.flows.FundGatewayWalletFlow
+import com.isw.paple.workflows.flows.WalletToWalletTransferFlow
 import net.corda.core.contracts.Amount
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
+import net.corda.finance.USD
 import net.corda.testing.core.singleIdentity
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetworkParameters
@@ -25,10 +27,11 @@ abstract class FlowTestsBase {
     protected lateinit var gatewayANode: StartedMockNode
     private lateinit var gatewayBNode: StartedMockNode
 
-//    protected lateinit var notary: Party
+    //protected lateinit var notary: Party
     protected lateinit var issuer: Party
-//    protected lateinit var gatewayA: Party
-//    protected lateinit var gatewayB: Party
+
+    protected val walletId = "f2^n2#9N21-c'2+@cm20?scw2"
+    protected val zeroBalance = Amount(0, USD)
 
     @Before
     fun setup() {
@@ -44,16 +47,15 @@ abstract class FlowTestsBase {
         gatewayANode = network.createPartyNode(CordaX500Name("GatewayA", "Lagos", "NG"))
         gatewayBNode = network.createPartyNode(CordaX500Name("GatewayB", "Port Harcourt", "NG"))
 
-//        notary = network.defaultNotaryIdentity
+        //notary = network.defaultNotaryIdentity
         issuer = issuerNode.info.singleIdentity()
-//        gatewayA = gatewayANode.info.singleIdentity()
-//        gatewayB = gatewayBNode.info.singleIdentity()
 
         val responseFlows = listOf(
             CreateWalletFlow.Responder::class.java,
-            IssueFundsFlow.Responder::class.java
+            FundGatewayWalletFlow.Responder::class.java,
+            WalletToWalletTransferFlow.Responder::class.java
         )
-        listOf(gatewayANode, gatewayBNode).forEach {
+        listOf(issuerNode, gatewayANode, gatewayBNode).forEach {
             for (flow in responseFlows) {
                 it.registerInitiatedFlow(flow)
             }
@@ -80,7 +82,7 @@ abstract class FlowTestsBase {
     }
 
     fun issuerNodeFundsGatewayWallet(walletId: String, amount: Amount<Currency>): SignedTransaction {
-        val flow = IssueFundsFlow.Initiator(walletId, amount)
+        val flow = FundGatewayWalletFlow.Initiator(walletId, amount)
         val future = issuerNode.startFlow(flow)
         network.runNetwork()
         return future.get()
