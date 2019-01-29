@@ -23,6 +23,15 @@ fun getWalletStateByWalletId(walletId: String, services: ServiceHub): StateAndRe
     return states.singleOrNull()
 }
 
+fun getWalletStateByWalletIdAndWalletType(walletId: String, type: WalletType, services: ServiceHub) : StateAndRef<WalletState>? {
+    val states = getState<WalletState>(services) { generalCriteria ->
+        val walletIdCriteria = QueryCriteria.VaultCustomQueryCriteria(WalletStateSchemaV1.PersistentWalletState::walletId.equal(walletId))
+        val typeCriteria = QueryCriteria.VaultCustomQueryCriteria(WalletStateSchemaV1.PersistentWalletState::type.equal(type.name))
+        generalCriteria.and(walletIdCriteria).and(typeCriteria)
+    }
+    return states.singleOrNull()
+}
+
 fun getRecognisedIssuerStateByIssuerName(issuer: String, services: ServiceHub): StateAndRef<RecognisedIssuerState>? {
     val states = getState<RecognisedIssuerState>(services) { generalCriteria ->
         val additionalCriteria = QueryCriteria.VaultCustomQueryCriteria(RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState::issuer.equal(issuer))
