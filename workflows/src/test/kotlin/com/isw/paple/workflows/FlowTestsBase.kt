@@ -1,5 +1,6 @@
 package com.isw.paple.workflows
 
+import com.isw.paple.common.types.Transfer
 import com.isw.paple.common.types.Wallet
 import com.isw.paple.workflows.flows.AddRecognisedIssuerFlow
 import com.isw.paple.workflows.flows.CreateWalletFlow
@@ -31,6 +32,8 @@ abstract class FlowTestsBase {
     protected lateinit var issuer: Party
 
     protected val walletId = "f2^n2#9N21-c'2+@cm20?scw2"
+    protected val senderWalletId = ")#(NC@*N@8fn2921"
+    protected val recipientWalletId = "P-12id0-Mc;2Nc29jv2"
     protected val zeroBalance = Amount(0, USD)
     protected val fundAmount = Amount(10*100, USD)
     protected val transferAmount = Amount(3*100, USD)
@@ -86,6 +89,13 @@ abstract class FlowTestsBase {
     fun issuerNodeFundsGatewayWallet(walletId: String, amount: Amount<Currency>): SignedTransaction {
         val flow = FundGatewayWalletFlow.Initiator(walletId, amount)
         val future = issuerNode.startFlow(flow)
+        network.runNetwork()
+        return future.get()
+    }
+
+    fun gatewayNodeTransfersToWallet(transfer: Transfer, gatewayNode: StartedMockNode) : SignedTransaction {
+        val flow = WalletToWalletTransferFlow.Initiator(transfer)
+        val future = gatewayNode.startFlow(flow)
         network.runNetwork()
         return future.get()
     }
