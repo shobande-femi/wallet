@@ -4,7 +4,10 @@ import co.paralleluniverse.fibers.Suspendable
 import com.isw.paple.common.contracts.TransferReceiptContract
 import com.isw.paple.common.contracts.WalletContract
 import com.isw.paple.common.states.WalletState
-import com.isw.paple.common.types.*
+import com.isw.paple.common.types.Transfer
+import com.isw.paple.common.types.TransferStatus
+import com.isw.paple.common.types.isOnUs
+import com.isw.paple.common.types.toState
 import com.isw.paple.common.utilities.getWalletStateByWalletId
 import com.isw.paple.common.utilities.moveFunds
 import net.corda.core.contracts.Command
@@ -12,10 +15,10 @@ import net.corda.core.contracts.InsufficientBalanceException
 import net.corda.core.contracts.StateAndContract
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
+import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
-import net.corda.core.utilities.unwrap
 import net.corda.finance.contracts.asset.Cash
 import net.corda.finance.flows.CashException
 
@@ -57,18 +60,21 @@ object WalletToWalletTransferFlow {
 
             logger.info("Getting sender wallet: ${transfer.senderWalletId}")
             val inputSenderWalletStateAndRef = getWalletStateByWalletId(walletId = transfer.senderWalletId, services = serviceHub) ?: throw NonExistentWalletException(transfer.senderWalletId)
-            val inputSenderWalletState = inputSenderWalletStateAndRef.state.data
 
             return if (isOnUs(transfer.type)) {
                 if (transfer.recipient != ourIdentity) throw WeAreNotOwnerException()
-                onUsTransfer(inputSenderWalletState)
+                onUsTransfer(inputSenderWalletStateAndRef)
             } else {
                 if (transfer.recipient == ourIdentity) throw UnspecifiedRecipient()
-                notOnUsTransfer(inputSenderWalletState)
+                notOnUsTransfer(inputSenderWalletStateAndRef)
             }
         }
 
-        private fun assembleTx(inputSenderWalletState: WalletState, inputRecipientWalletState: WalletState): TransactionBuilder {
+        @Suspendable
+        private fun assembleTx(inputSenderWalletStateAndRef: StateAndRef<WalletState>, inputRecipientWalletStateAndRef: StateAndRef<WalletState>): TransactionBuilder {
+            val inputSenderWalletState = inputSenderWalletStateAndRef.state.data
+            val inputRecipientWalletState = inputRecipientWalletStateAndRef.state.data
+
             if (inputSenderWalletState.balance.token != inputRecipientWalletState.balance.token) {
                 //TODO remove this when cross currency transfer is implemented
                 throw FlowException("cross currency transfers not allowed yet")
@@ -95,6 +101,8 @@ object WalletToWalletTransferFlow {
             return TransactionBuilder(notary = notary)
                 .withItems(
                     transferCommand,
+                    inputSenderWalletStateAndRef,
+                    inputRecipientWalletStateAndRef,
                     outputSenderWalletStateAndContract,
                     outputRecipientWalletStateAndContract,
 
@@ -103,12 +111,12 @@ object WalletToWalletTransferFlow {
                 )
         }
 
-        private fun onUsTransfer(inputSenderWalletState: WalletState): SignedTransaction {
+        @Suspendable
+        private fun onUsTransfer(inputSenderWalletStateAndRef: StateAndRef<WalletState>): SignedTransaction {
             logger.info("Getting recipient wallet: ${transfer.recipientWalletId}")
             val inputRecipientWalletStateAndRef = getWalletStateByWalletId(walletId = transfer.recipientWalletId, services = serviceHub) ?: throw NonExistentWalletException(transfer.recipientWalletId)
-            val inputRecipientWalletState = inputRecipientWalletStateAndRef.state.data
 
-            val txBuilder = assembleTx(inputSenderWalletState, inputRecipientWalletState)
+            val txBuilder = assembleTx(inputSenderWalletStateAndRef, inputRecipientWalletStateAndRef)
 
             logger.info("Verifying tx")
             progressTracker.currentStep = TX_VERIFICATION
@@ -123,28 +131,17 @@ object WalletToWalletTransferFlow {
             return subFlow(FinalityFlow(transaction = signedTx, sessions = listOf()))
         }
 
-        private fun notOnUsTransfer(inputSenderWalletState: WalletState) : SignedTransaction {
+        @Suspendable
+        private fun notOnUsTransfer(inputSenderWalletStateAndRef: StateAndRef<WalletState>) : SignedTransaction {
             //if we are the issuer, we definitely have a copy of the wallet
             //if not we must request the issuer gives us a copy of this state
             //should we assume there would always be a single issuing party?
-            val recipientSession = initiateFlow(transfer.recipient)
-            logger.info("Getting recipient wallet: ${transfer.recipientWalletId} from counter party")
-            val inputRecipientWalletState = recipientSession.sendAndReceive<List<StateAndRef<WalletState>>>(transfer.recipientWalletId)
-                .unwrap {
-                    require(it.size == 1) {"only one recipient state needed"}
-                    val walletState = it.single().state.data
 
-                    //TODO: uncomment this when wallet verification logic is done
-                    // require(walletState.verified) {"Wallet must be verified"}
+            val inputSenderWalletState = inputSenderWalletStateAndRef.state.data
+            val inputRecipientWalletStateAndRef = subFlow(RequestWalletFromCounterPartyFlow.Initiator(transfer.recipient, transfer.recipientWalletId))
+            val inputRecipientWalletState = inputRecipientWalletStateAndRef.state.data
 
-                    require(walletState.owner == recipientSession.counterparty) {"Recipient must be owner of recipient wallet"}
-
-                    //TODO: maybe include onlyFromParties logic?
-
-                    walletState
-            }
-
-            val txBuilder = assembleTx(inputSenderWalletState, inputRecipientWalletState)
+            val txBuilder = assembleTx(inputSenderWalletStateAndRef, inputRecipientWalletStateAndRef)
 
             val (_, keys) = try {
                 Cash.generateSpend(
@@ -166,9 +163,16 @@ object WalletToWalletTransferFlow {
             progressTracker.currentStep = SIGNING
             val signedTx = serviceHub.signInitialTransaction(txBuilder, keys)
 
+            val participantSessions = (inputSenderWalletState.participants+inputRecipientWalletState.participants)
+                .toSet()
+                .filter { it != ourIdentity }
+                .map {
+                    initiateFlow(it as Party)
+                }
+
             logger.info("Finalising tx")
             progressTracker.currentStep = FINALISING
-            return subFlow(FinalityFlow(transaction = signedTx, sessions = listOf(recipientSession)))
+            return subFlow(FinalityFlow(transaction = signedTx, sessions = participantSessions))
         }
     }
 
@@ -189,12 +193,6 @@ object WalletToWalletTransferFlow {
         @Suspendable
         override fun call(): SignedTransaction {
             logger.info("Starting WalletToWalletTransferFlow.Responder")
-            progressTracker.currentStep = RECEIVING
-            val inputRecipientWalletStateAndRef = senderSession.receive<String>().unwrap {
-                //TODO: maybe perform some checks, like sender is recognised issuer?
-                getWalletStateByWalletId(walletId = it, services = serviceHub) ?: throw NonExistentWalletException(it)
-            }
-            SendStateAndRefFlow(senderSession, listOf(inputRecipientWalletStateAndRef))
 
             logger.info("Receiving finalised tx")
             progressTracker.currentStep = RECEIVE_FINALISED
