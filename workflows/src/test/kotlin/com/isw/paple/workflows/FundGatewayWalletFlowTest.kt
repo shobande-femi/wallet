@@ -8,7 +8,6 @@ import com.isw.paple.common.types.WalletType
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.Issued
 import net.corda.core.node.services.queryBy
-import net.corda.finance.USD
 import net.corda.finance.contracts.asset.Cash
 import net.corda.testing.core.singleIdentity
 import org.junit.Test
@@ -27,8 +26,7 @@ class FundGatewayWalletFlowTest: FlowTestsBase() {
         gatewayNodeAddsRecognisedIssuer(issuer, gatewayNode)
         val createdWalletState = issuerNodeCreatesWallet(wallet).tx.outputsOfType<WalletState>().single()
 
-        val fundAmount =Amount(10*100, USD)
-        issuerNodeFundsGatewayWallet(walletId, fundAmount)
+        issuerNodeFundsGatewayWallet(createdWalletState.linearId.externalId.toString(), fundAmount)
 
         for (node in listOf(issuerNode, gatewayNode)) {
             node.transaction {

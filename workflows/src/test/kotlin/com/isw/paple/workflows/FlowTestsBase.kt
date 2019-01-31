@@ -25,13 +25,15 @@ abstract class FlowTestsBase {
     private lateinit var notaryNode: StartedMockNode
     protected lateinit var issuerNode: StartedMockNode
     protected lateinit var gatewayANode: StartedMockNode
-    private lateinit var gatewayBNode: StartedMockNode
+    protected lateinit var gatewayBNode: StartedMockNode
 
     //protected lateinit var notary: Party
     protected lateinit var issuer: Party
 
     protected val walletId = "f2^n2#9N21-c'2+@cm20?scw2"
     protected val zeroBalance = Amount(0, USD)
+    protected val fundAmount = Amount(10*100, USD)
+    protected val transferAmount = Amount(3*100, USD)
 
     @Before
     fun setup() {
