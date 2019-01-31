@@ -32,6 +32,7 @@ class CreateWalletFlowTest: FlowTestsBase() {
                 assertEquals(1, walletStates.size)
                 val walletState = walletStates.single().state.data
 
+                assertEquals(walletState.linearId.externalId, walletId)
                 assertEquals(walletState.balance, zeroBalance)
                 assertEquals(walletState.issuedBy, issuer)
                 assertEquals(walletState.owner, gatewayParty)
@@ -70,6 +71,7 @@ class CreateWalletFlowTest: FlowTestsBase() {
             assertEquals(1, walletStates.size)
             val walletState = walletStates.single().state.data
 
+            assertEquals(walletState.linearId.externalId, walletId)
             assertEquals(walletState.balance, zeroBalance)
             assertEquals(walletState.issuedBy, issuer)
             assertEquals(walletState.owner, issuer)
