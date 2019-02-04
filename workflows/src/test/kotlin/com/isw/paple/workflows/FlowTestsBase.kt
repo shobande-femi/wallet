@@ -4,7 +4,7 @@ import com.isw.paple.common.types.Transfer
 import com.isw.paple.common.types.Wallet
 import com.isw.paple.workflows.flows.AddRecognisedIssuerFlow
 import com.isw.paple.workflows.flows.CreateWalletFlow
-import com.isw.paple.workflows.flows.FundGatewayWalletFlow
+import com.isw.paple.workflows.flows.IssueFundsToWalletFlow
 import com.isw.paple.workflows.flows.WalletToWalletTransferFlow
 import net.corda.core.contracts.Amount
 import net.corda.core.identity.CordaX500Name
@@ -57,7 +57,7 @@ abstract class FlowTestsBase {
 
         val responseFlows = listOf(
             CreateWalletFlow.Responder::class.java,
-            FundGatewayWalletFlow.Responder::class.java,
+            IssueFundsToWalletFlow.Responder::class.java,
             WalletToWalletTransferFlow.Responder::class.java
         )
         listOf(issuerNode, gatewayANode, gatewayBNode).forEach {
@@ -72,8 +72,8 @@ abstract class FlowTestsBase {
     @After
     fun tearDown() = network.stopNodes()
 
-    fun gatewayNodeAddsRecognisedIssuer(issuerParty: Party, gatewayNode: StartedMockNode): SignedTransaction {
-        val flow = AddRecognisedIssuerFlow.Initiator(issuerParty)
+    fun gatewayNodeAddsRecognisedIssuer(issuerParty: Party, currencyCode: String, gatewayNode: StartedMockNode): SignedTransaction {
+        val flow = AddRecognisedIssuerFlow.Initiator(issuerParty, currencyCode)
         val future = gatewayNode.startFlow(flow)
         network.runNetwork()
         return future.get()
@@ -87,7 +87,7 @@ abstract class FlowTestsBase {
     }
 
     fun issuerNodeFundsGatewayWallet(walletId: String, amount: Amount<Currency>): SignedTransaction {
-        val flow = FundGatewayWalletFlow.Initiator(walletId, amount)
+        val flow = IssueFundsToWalletFlow.Initiator(walletId, amount)
         val future = issuerNode.startFlow(flow)
         network.runNetwork()
         return future.get()
