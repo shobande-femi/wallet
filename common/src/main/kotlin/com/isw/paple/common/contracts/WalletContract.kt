@@ -17,7 +17,8 @@ class WalletContract : Contract {
 
     interface Commands : CommandData
     class Create : Commands
-    class Fund : Commands
+    class VerifyWallet : Commands
+    class IssueFund : Commands
     class Transfer : Commands
 
     override fun verify(tx: LedgerTransaction) {
@@ -26,7 +27,8 @@ class WalletContract : Contract {
 
         when (walletCommand.value) {
             is Create -> verifyCreate(tx, signers)
-            is Fund -> verifyFund(tx, signers)
+            is VerifyWallet -> verifyWallet(tx, signers)
+            is IssueFund -> verifyIssueFund(tx, signers)
             is Transfer -> verifyTransfer(tx, signers)
             else -> throw IllegalArgumentException("Unrecognised command.")
         }
@@ -42,7 +44,7 @@ class WalletContract : Contract {
         "On wallet creation, wallet balance must be zero" using (walletState.balance.quantity == 0L)
 
         // TODO: find better way of doing this
-        "Only NGN and USD are supported" using (walletState.balance.token.toString() in allowedCurrencies)
+        "Currency not in list of allowed currencies" using (walletState.balance.token.currencyCode in allowedCurrencies)
 
         "Wallet must be unverified" using (!walletState.verified)
 
@@ -59,9 +61,12 @@ class WalletContract : Contract {
 
         "The creator of this wallet (i.e the issuer) must sign the transaction" using (signers.contains(walletState.issuedBy.owningKey))
         "Wallet owner must sign this transaction" using (signers.contains(walletState.owner.owningKey))
+
+        //TODO: is it possible to fetch the list of recognised issuers from the vault?
+        //if so, check that creator is a recognised issuer
     }
 
-    private fun verifyFund(tx: LedgerTransaction, signers: Set<PublicKey>) {
+    private fun verifyIssueFund(tx: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
         //Shape constraints
         val inputWalletStates = tx.inputsOfType<WalletState>()
         val outputWalletStates = tx.outputsOfType<WalletState>()
@@ -69,6 +74,8 @@ class WalletContract : Contract {
         "Tx must contain a single output wallet state" using (outputWalletStates.size == 1)
         val inputWalletState = inputWalletStates.single()
         val outputWalletState = outputWalletStates.single()
+
+        "wallets receiving funds must be verified" using (inputWalletState.verified)
 
         val balanceDiff = outputWalletState.balance.minus(inputWalletState.balance)
         "Only difference allowed between input and output wallet states is their balances" using (
@@ -82,7 +89,22 @@ class WalletContract : Contract {
 
     }
 
-    private fun verifyTransfer(tx: LedgerTransaction, signers: Set<PublicKey>) {
+    private fun verifyTransfer(tx: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
+        //TODO: contract implementation
+        val inputWalletStates = tx.inputsOfType<WalletState>()
+        val outputWalletStates = tx.outputsOfType<WalletState>()
+        "Tx must contain a single input wallet state" using (inputWalletStates.size == 2)
+        "Tx must contain a single output wallet state" using (outputWalletStates.size == 2)
+        val inputWalletState = inputWalletStates.single()
+        val outputWalletState = outputWalletStates.single()
+
+        inputWalletStates.forEach {
+            "Sender and recipient wallets must be verified" using (it.verified)
+        }
+
+    }
+
+    private fun verifyWallet(tx: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
         //TODO: contract implementation
     }
 }
