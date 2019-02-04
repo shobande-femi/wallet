@@ -8,6 +8,7 @@ import com.isw.paple.common.types.Transfer
 import com.isw.paple.common.types.TransferStatus
 import com.isw.paple.common.types.isOnUs
 import com.isw.paple.common.types.toState
+import com.isw.paple.common.utilities.getActivatedRecognisedIssuer
 import com.isw.paple.common.utilities.getWalletStateByWalletId
 import com.isw.paple.common.utilities.moveFunds
 import net.corda.core.contracts.Command
@@ -22,15 +23,40 @@ import net.corda.core.utilities.ProgressTracker
 import net.corda.finance.contracts.asset.Cash
 import net.corda.finance.flows.CashException
 
+/** A generic flow pair for transfers between wallets of all kinds
+ */
 object WalletToWalletTransferFlow {
 
     class NonExistentWalletException(walletId: String) : FlowException("Wallet with id: $walletId doesn't exist")
     class WeAreNotOwnerException: FlowException("If transfer is on us, we must be recipient")
     class UnspecifiedRecipient : FlowException("If transfer is not on us, a recipient party other than our self must be provided")
 
+    /**
+     * Transfers between wallets can be thought of in 2 forms
+     * 1. On Us Transfers: The initiating party owns the sender and recipient wallets. All wallet kinds except ones owned
+     * by gateways are really owned by the Issuer. Hence, transfers between these wallet kinds do not involve a change
+     * in ownership of cash states. However, Sender and recipient wallets are consumed to reflect the transfer.
+     * When it is an on us transfer, the recipient must be our identity.
+     * 2. Not on Us transfers: these transfers occur when the owners of the sender and recipient wallets are different
+     * parties. The sender party may not have a view of the recipient wallet, and must initiate a flow session with
+     * the recipient party, requesting for the recipient wallet. On receipt of this wallet, the sender can correctly
+     * construct the transaction.
+     * When it is a not on us transfer, our identity must not be the recipient party, for obvious reasons.
+     * //TODO this approach is not suitable as it poses privacy challenges, it will be changed sometime in future
+     *
+     * The assembled transaction consumed the sender and recipient states, adding new sender and recipient states (with debit and credit done)
+     * as outputs.
+     * An Transaction receipt state is also generated, for ease of tracking transaction history
+     * In the cash of an on us transfer, cash states need not change ownership
+     * On the other hand, we generate a spend, sending some cash (as specified in the transfer amount) to the recipient
+     *
+     * @param transfer information of the transfer to be performed
+     */
     @InitiatingFlow
     @StartableByRPC
     class Initiator(private val transfer: Transfer) : FlowLogic<SignedTransaction>() {
+
+        class NoActivatedRecognisedIssuerException : FlowException("Cannot find an activated recognised issuer in vault")
 
         companion object {
             // TODO: fine tune progress tracker
@@ -61,6 +87,7 @@ object WalletToWalletTransferFlow {
             logger.info("Getting sender wallet: ${transfer.senderWalletId}")
             val inputSenderWalletStateAndRef = getWalletStateByWalletId(walletId = transfer.senderWalletId, services = serviceHub) ?: throw NonExistentWalletException(transfer.senderWalletId)
 
+            //decide if this is an onUs or a notOnUs transfer
             return if (isOnUs(transfer.type)) {
                 if (transfer.recipient != ourIdentity) throw WeAreNotOwnerException()
                 onUsTransfer(inputSenderWalletStateAndRef)
@@ -80,7 +107,7 @@ object WalletToWalletTransferFlow {
                 throw FlowException("cross currency transfers not allowed yet")
             }
             //TODO: checks for embargo on wallet
-            //TODO: check transfer limits, also check if wallet verified
+            //TODO: check transfer limits
 
             logger.info("Constructing tx")
             val transferCommand = Command(WalletContract.Transfer(), listOf(inputSenderWalletState.owner.owningKey))
@@ -143,14 +170,20 @@ object WalletToWalletTransferFlow {
 
             val txBuilder = assembleTx(inputSenderWalletStateAndRef, inputRecipientWalletStateAndRef)
 
+            val activatedRecognisedIssuerStateAndRef = getActivatedRecognisedIssuer(
+                transfer.amount.token.currencyCode,
+                serviceHub
+            ) ?: throw NoActivatedRecognisedIssuerException()
+
             val (_, keys) = try {
                 Cash.generateSpend(
                     services = serviceHub,
                     tx = txBuilder,
                     amount = transfer.amount,
                     to = transfer.recipient,
-                    ourIdentity = ourIdentityAndCert)
-                //TODO include the onlyFromParties, to ensure gateways only accept cash from recognised issuers
+                    ourIdentity = ourIdentityAndCert,
+                    onlyFromParties = setOf(activatedRecognisedIssuerStateAndRef.state.data.issuer)
+                )
             } catch (e: InsufficientBalanceException) {
                 throw CashException("Insufficient cash for spend: ${e.message}", e)
             }
