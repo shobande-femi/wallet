@@ -2,10 +2,7 @@ package com.isw.paple.workflows
 
 import com.isw.paple.common.types.Transfer
 import com.isw.paple.common.types.Wallet
-import com.isw.paple.workflows.flows.AddRecognisedIssuerFlow
-import com.isw.paple.workflows.flows.CreateWalletFlow
-import com.isw.paple.workflows.flows.IssueFundsToWalletFlow
-import com.isw.paple.workflows.flows.WalletToWalletTransferFlow
+import com.isw.paple.workflows.flows.*
 import net.corda.core.contracts.Amount
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
@@ -81,6 +78,13 @@ abstract class FlowTestsBase {
 
     fun issuerNodeCreatesWallet(wallet: Wallet): SignedTransaction {
         val flow = CreateWalletFlow.Initiator(wallet)
+        val future = issuerNode.startFlow(flow)
+        network.runNetwork()
+        return future.get()
+    }
+
+    fun issuerNodeVerifiesWallet(walletId: String) : SignedTransaction {
+        val flow = VerifyWalletFlow.Initiator(walletId)
         val future = issuerNode.startFlow(flow)
         network.runNetwork()
         return future.get()
