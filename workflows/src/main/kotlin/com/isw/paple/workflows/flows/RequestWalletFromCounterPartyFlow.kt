@@ -9,9 +9,21 @@ import net.corda.core.identity.Party
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
 
+/**
+ * Flow pair for requesting for a wallet state from a counter party
+ * This is a makeshift implementation, and would likely become deprecated at some point as it poses some privacy concerns
+ * Parties shouldn't be required to submit their wallet states to any party but a regulator or issuer
+ *
+ * In the meanwhile, this flow pair is used for not on us transfers i.e transfers to wallets that we do not have a copy of.
+ * While building the transaction, we request for the recipient's wallet, so we correctly build the transaction
+ */
 object RequestWalletFromCounterPartyFlow {
     class NonExistentWalletException(walletId: String) : FlowException("Wallet with id: $walletId doesn't exist")
 
+    /**
+     * @param counterParty the to request wallet information from
+     * @param walletId id of the wallet for which we expect the [counterParty] to return
+     */
     @InitiatingFlow
     @StartableByRPC
     class Initiator(private val counterParty: Party, private val walletId: String) : FlowLogic<StateAndRef<WalletState>>() {
@@ -27,16 +39,16 @@ object RequestWalletFromCounterPartyFlow {
 
             val recipientWalletStateAndRef = recipientWalletStatesAndRefs.single()
             val recipientWalletState = recipientWalletStateAndRef.state.data
-            //TODO: uncomment this when wallet verification logic is done
-            //require(inputRecipientWalletState.verified) {"Wallet must be verified"}
             require(recipientWalletState.owner == recipientSession.counterparty) {"Recipient session must own recipient wallet"}
-            //TODO: maybe include onlyFromParties logic?
 
             return recipientWalletStateAndRef
         }
 
     }
 
+    /**
+     * @param senderSession initiator of this session i.e the party requesting for wallet information
+     */
     @InitiatedBy(Initiator::class)
     class Responder(private val senderSession: FlowSession) : FlowLogic<Unit>(){
         companion object {
