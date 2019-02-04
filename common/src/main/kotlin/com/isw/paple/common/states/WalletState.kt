@@ -74,4 +74,19 @@ data class WalletState (
             lastUpdated = lastUpdated
         )
     }
+
+    fun verifyWallet() : WalletState {
+        return copy(
+            owner = owner,
+            issuedBy = issuedBy,
+            balance = balance,
+            status = status,
+            type = type,
+            verified = true,
+            participants = participants,
+            linearId = linearId,
+            createdAt = createdAt,
+            lastUpdated = lastUpdated
+        )
+    }
 }
