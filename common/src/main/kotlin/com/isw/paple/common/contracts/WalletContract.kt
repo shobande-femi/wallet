@@ -95,8 +95,6 @@ class WalletContract : Contract {
         val outputWalletStates = tx.outputsOfType<WalletState>()
         "Tx must contain a single input wallet state" using (inputWalletStates.size == 2)
         "Tx must contain a single output wallet state" using (outputWalletStates.size == 2)
-        val inputWalletState = inputWalletStates.single()
-        val outputWalletState = outputWalletStates.single()
 
         inputWalletStates.forEach {
             "Sender and recipient wallets must be verified" using (it.verified)
