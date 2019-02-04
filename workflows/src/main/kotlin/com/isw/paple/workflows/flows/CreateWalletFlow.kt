@@ -6,8 +6,9 @@ import com.isw.paple.common.states.WalletState
 import com.isw.paple.common.types.Wallet
 import com.isw.paple.common.types.WalletType
 import com.isw.paple.common.types.toState
-import com.isw.paple.common.utilities.getRecognisedIssuerStateByIssuerName
+import com.isw.paple.common.utilities.getActivatedRecognisedIssuerByIssuerName
 import com.isw.paple.common.utilities.getWalletStateByWalletId
+import com.isw.paple.workflows.flows.CreateWalletFlow.Responder
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndContract
 import net.corda.core.flows.*
@@ -18,17 +19,29 @@ import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
 
-
+/**
+ * Flow Pair for the creation of new wallets
+ *
+ * The [Responder] flow is only needed for Gateway owned Wallets
+ */
 object CreateWalletFlow {
     @CordaSerializable
     data class AssembledTransaction(val tx: TransactionBuilder)
 
+    class WalletExistsException(walletId: String) : FlowException("Wallet $walletId already exists")
     class UnrecognizedIssuerException(unrecognisedIssuer: Party) : FlowException("Initiating party: $unrecognisedIssuer is an unrecognised Issuer")
     class UnspecifiedRecipient : FlowException("If wallet type is Gateway Owned, a recipient party other than our self must be provided")
     class WeAreNotOwnerException: FlowException("Other than gateway wallet kinds, issuing party must be wallet owner")
     /**
      * Adds a new [Wallet] state to the ledger.
-     * The state is always added as a "uni-lateral state" to the node calling this flow.
+     *
+     * The flow ensures a [WalletState] with the proposed wallet id doesn't already exist.
+     * All wallet types except Gateway Owned wallets are really owned by the issuer, hence, no other party (but the issuer)
+     * need to sign the creation of these wallets.
+     * On the other hand, Gateways must be aware and append their signature to the creation of a gateway owned wallet,
+     * where they are the wallet owner
+     *
+     * @param wallet the information of the wallet to be created
      */
     @InitiatingFlow
     @StartableByRPC
@@ -66,10 +79,9 @@ object CreateWalletFlow {
         @Suspendable
         override fun call(): SignedTransaction {
 
-            logger.info("Checking if state with externalId: ${wallet.walletId} exists.")
-            val result = getWalletStateByWalletId(walletId = wallet.walletId, services = serviceHub)
-            if (result != null) {
-                throw FlowException("Wallet ${wallet.walletId} already exists with linearId: (${result.state.data.linearId}).")
+            val preExistingWalletStateAndRef = getWalletStateByWalletId(walletId = wallet.walletId, services = serviceHub)
+            if (preExistingWalletStateAndRef != null) {
+                throw WalletExistsException(wallet.walletId)
             }
 
             return when (wallet.type) {
@@ -95,8 +107,6 @@ object CreateWalletFlow {
             val gatewaySession = initiateFlow(wallet.owner)
             gatewaySession.send(wallet)
 
-            // TODO: if the other flow throws an [IllegalStateException] try kicking off a flow to Add our self as a recognized issuer
-
             // After the gateway receives and validates the wallet to be created
             // The gateway builds a transaction and requests for the issuer's signature
             // Of course, the issuer must validate the authenticity of such transaction before appending its signature
@@ -115,6 +125,8 @@ object CreateWalletFlow {
                     require(wallet.status == outputState.status) {"wallet status doesn't match initial value"}
                 }
             }
+            //take not of the id of the transaction we signed
+            //this is necessary so we do not record a finalised transaction that we did not sign
             val txId = subFlow(signTransactionFlow).id
 
             progressTracker.currentStep = RECEIVE_FINALISED
@@ -155,7 +167,20 @@ object CreateWalletFlow {
     }
 
 
-
+    /**
+     * In here, the Gateway receives the information of the proposed wallet to be created, validated the validity of
+     * this information, ensures that the initiator of the creation request is a recognised Issuer.
+     *
+     * This means, prior to this transaction, this Gateway must have added the initiator as a Recognised Issuer by starting
+     * the AddRecognisedIssuerFlow.
+     * The initiator must not just exist as a recognised issuer, it must be an activated recognised issuer before this gateway
+     * responds favorable
+     *
+     * After all verification, this gateway assembles the wallet creation transaction, a requests the signature of all
+     * counterparties involved in this transaction (in this case, the initiator/issuer)
+     *
+     * @param issuerSession the initiator of this flow
+     */
     @InitiatedBy(Initiator::class)
     class Responder(private val issuerSession: FlowSession) : FlowLogic<SignedTransaction>() {
 
@@ -188,13 +213,17 @@ object CreateWalletFlow {
 
         @Suspendable
         override fun call(): SignedTransaction {
-            //there is a prerecorded list of issuers that this gateway recognises
-            //the [AddRecognisedIssuers] flow is used to add more issuers
-            //we need to check that the party initiating this session is a recognised issuer
-            getRecognisedIssuerStateByIssuerName(issuerSession.counterparty.toString(), serviceHub) ?: throw UnrecognizedIssuerException(issuerSession.counterparty)
-
             progressTracker.currentStep = RECEIVING
             val wallet = receiveAndValidateWalletInfo()
+
+            //there is a prerecorded list of issuers that this gateway recognises
+            //the [AddRecognisedIssuers] flow is used to add more issuers
+            //we need to check that the party initiating this session is an activated recognised issuer
+            getActivatedRecognisedIssuerByIssuerName(
+                wallet.balance.token.currencyCode,
+                issuerSession.counterparty.toString(),
+                serviceHub
+            ) ?: throw UnrecognizedIssuerException(issuerSession.counterparty)
 
             // Put together a proposed transaction that performs wallet creation.
             progressTracker.currentStep = SIGNING
@@ -214,7 +243,7 @@ object CreateWalletFlow {
                 progressTracker.currentStep = VALIDATING
                 require(it.owner == ourIdentity) {"We must own this wallet before signing it's creation"}
                 require(it.balance.quantity == 0L) {"On wallet creation, wallet balance must be zero"}
-                require(it.type == WalletType.GATEWAY_OWNED) {"Wallet type must be workflows owned"}
+                require(it.type == WalletType.GATEWAY_OWNED) {"Wallet type must be gateway owned"}
                 it
             }
         }
