@@ -24,7 +24,8 @@ class IssueFundsToWalletFlowTest: FlowTestsBase() {
         val wallet = Wallet(walletId, gatewayParty, zeroBalance, status, type)
 
         gatewayNodeAddsRecognisedIssuer(issuer, zeroBalance.token.currencyCode, gatewayNode)
-        val createdWalletState = issuerNodeCreatesWallet(wallet).tx.outputsOfType<WalletState>().single()
+        issuerNodeCreatesWallet(wallet)
+        val createdWalletState = issuerNodeVerifiesWallet(walletId).tx.outputsOfType<WalletState>().single()
 
         issuerNodeFundsGatewayWallet(createdWalletState.linearId.externalId.toString(), fundAmount)
 

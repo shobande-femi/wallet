@@ -64,8 +64,10 @@ class WalletToWalletTransferFlowTest : FlowTestsBase() {
 
         val senderWallet = Wallet(senderWalletId, senderNode.info.singleIdentity(), zeroBalance, walletStatus, WalletType.GATEWAY_OWNED)
         val recipientWallet = Wallet(recipientWalletId, recipientNode.info.singleIdentity(), zeroBalance, walletStatus, recipientWalletType)
-        val createdSenderWalletState = issuerNodeCreatesWallet(senderWallet).tx.outputsOfType<WalletState>().single()
-        val createdRecipientWalletState = issuerNodeCreatesWallet(recipientWallet).tx.outputsOfType<WalletState>().single()
+        issuerNodeCreatesWallet(senderWallet)
+        val createdSenderWalletState = issuerNodeVerifiesWallet(senderWalletId).tx.outputsOfType<WalletState>().single()
+        issuerNodeCreatesWallet(recipientWallet).tx.outputsOfType<WalletState>().single()
+        val createdRecipientWalletState = issuerNodeVerifiesWallet(recipientWalletId).tx.outputsOfType<WalletState>().single()
 
         issuerNodeFundsGatewayWallet(createdSenderWalletState.linearId.externalId.toString(), fundAmount)
         val fundedSenderWalletState = senderNode.transaction {
