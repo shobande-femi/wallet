@@ -18,6 +18,7 @@ import net.corda.core.node.services.vault.builder
 fun getWalletStateByWalletId(walletId: String, services: ServiceHub): StateAndRef<WalletState>? {
     val states = getState<WalletState>(services) { generalCriteria ->
         val walletIdCriteria = QueryCriteria.VaultCustomQueryCriteria(WalletStateSchemaV1.PersistentWalletState::walletId.equal(walletId))
+
         generalCriteria.and(walletIdCriteria)
     }
     return states.singleOrNull()
@@ -27,15 +28,37 @@ fun getWalletStateByWalletIdAndWalletType(walletId: String, type: WalletType, se
     val states = getState<WalletState>(services) { generalCriteria ->
         val walletIdCriteria = QueryCriteria.VaultCustomQueryCriteria(WalletStateSchemaV1.PersistentWalletState::walletId.equal(walletId))
         val typeCriteria = QueryCriteria.VaultCustomQueryCriteria(WalletStateSchemaV1.PersistentWalletState::type.equal(type.name))
+
         generalCriteria.and(walletIdCriteria).and(typeCriteria)
     }
     return states.singleOrNull()
 }
 
-fun getRecognisedIssuerStateByIssuerName(issuer: String, services: ServiceHub): StateAndRef<RecognisedIssuerState>? {
+fun getRecognisedIssuer(issuer: String, currencyCode: String, services: ServiceHub): StateAndRef<RecognisedIssuerState>? {
     val states = getState<RecognisedIssuerState>(services) { generalCriteria ->
-        val additionalCriteria = QueryCriteria.VaultCustomQueryCriteria(RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState::issuer.equal(issuer))
-        generalCriteria.and(additionalCriteria)
+        val issuerNameCriteria = QueryCriteria.VaultCustomQueryCriteria(RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState::issuer.equal(issuer))
+        val currencyCodeCriteria = QueryCriteria.VaultCustomQueryCriteria(RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState::currencyCode.equal(currencyCode))
+        generalCriteria.and(issuerNameCriteria).and(currencyCodeCriteria)
+    }
+    return states.singleOrNull()
+}
+
+fun getActivatedRecognisedIssuer(currencyCode: String, services: ServiceHub): StateAndRef<RecognisedIssuerState>? {
+    val states = getState<RecognisedIssuerState>(services) { generalCriteria ->
+        val currencyCodeCriteria = QueryCriteria.VaultCustomQueryCriteria(RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState::currencyCode.equal(currencyCode))
+        val activatedCriteria = QueryCriteria.VaultCustomQueryCriteria(RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState::activated.equal(true))
+        generalCriteria.and(currencyCodeCriteria).and(activatedCriteria)
+    }
+    return states.singleOrNull()
+}
+
+fun getActivatedRecognisedIssuerByIssuerName(currencyCode: String, issuer: String, services: ServiceHub): StateAndRef<RecognisedIssuerState>? {
+    val states = getState<RecognisedIssuerState>(services) { generalCriteria ->
+        val currencyCodeCriteria = QueryCriteria.VaultCustomQueryCriteria(RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState::currencyCode.equal(currencyCode))
+        val activatedCriteria = QueryCriteria.VaultCustomQueryCriteria(RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState::activated.equal(true))
+        val issuerNameCriteria = QueryCriteria.VaultCustomQueryCriteria(RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState::issuer.equal(issuer))
+
+        generalCriteria.and(currencyCodeCriteria).and(activatedCriteria).and(issuerNameCriteria)
     }
     return states.singleOrNull()
 }

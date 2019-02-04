@@ -16,6 +16,8 @@ import java.time.Instant
 data class RecognisedIssuerState (
     val issuer: Party,
     val addedBy: Party,
+    val currencyCode: String,
+    val activated: Boolean,
     override val participants: List<AbstractParty>,
     override val linearId: UniqueIdentifier,
     val addedAt: Instant = Instant.now(),
@@ -24,14 +26,18 @@ data class RecognisedIssuerState (
 
     constructor(
         issuer: Party,
-        addedBy: Party
-    ) : this(issuer, addedBy, listOf(addedBy), UniqueIdentifier(issuer.toString()))
+        addedBy: Party,
+        currencyCode: String,
+        activated: Boolean
+    ) : this(issuer, addedBy, currencyCode, activated, listOf(addedBy), UniqueIdentifier(issuer.toString()))
 
     override fun generateMappedObject(schema: MappedSchema): PersistentState {
         return when (schema) {
             is RecognisedIssuerStateSchemaV1 -> RecognisedIssuerStateSchemaV1.PersistentRecognisedIssuerState(
                 issuer = issuer.name.toString(),
                 addedBy = addedBy.name.toString(),
+                currencyCode = currencyCode,
+                activated = activated,
                 linearId = linearId.id.toString(),
                 addedAt = addedAt.toEpochMilli(),
                 lastUpdated = lastUpdated.toEpochMilli()
@@ -41,4 +47,30 @@ data class RecognisedIssuerState (
     }
 
     override fun supportedSchemas(): Iterable<MappedSchema> = listOf(RecognisedIssuerStateSchemaV1)
+
+    fun activate() : RecognisedIssuerState{
+        return copy(
+            issuer = issuer,
+            addedBy = addedBy,
+            currencyCode = currencyCode,
+            activated = true,
+            participants = participants,
+            linearId = linearId,
+            addedAt = addedAt,
+            lastUpdated = lastUpdated
+        )
+    }
+
+    fun deactivate() : RecognisedIssuerState{
+        return copy(
+            issuer = issuer,
+            addedBy = addedBy,
+            currencyCode = currencyCode,
+            activated = false,
+            participants = participants,
+            linearId = linearId,
+            addedAt = addedAt,
+            lastUpdated = lastUpdated
+        )
+    }
 }

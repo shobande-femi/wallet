@@ -21,6 +21,10 @@ object RecognisedIssuerStateSchemaV1 : MappedSchema(
         var issuer: String,
         @Column(name = "added_by")
         var addedBy: String,
+        @Column(name = "currency")
+        var currencyCode: String,
+        @Column(name = "activated")
+        var activated: Boolean,
         @Column(name = "linear_id")
         var linearId: String,
         @Column(name = "added_at")
@@ -32,6 +36,8 @@ object RecognisedIssuerStateSchemaV1 : MappedSchema(
         constructor() : this(
             issuer = "",
             addedBy = "",
+            currencyCode = "",
+            activated = false,
             linearId = "",
             addedAt = 0L,
             lastUpdated = 0L
