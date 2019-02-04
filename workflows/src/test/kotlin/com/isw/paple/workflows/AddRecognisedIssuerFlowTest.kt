@@ -16,7 +16,8 @@ class AddRecognisedIssuerFlowTest: FlowTestsBase() {
 
     private fun testAddRecognisedIssuer(gatewayNode: StartedMockNode) {
         val gatewayParty = gatewayNode.info.singleIdentity()
-        gatewayNodeAddsRecognisedIssuer(issuerParty = issuer, gatewayNode = gatewayNode)
+        val currencyCode = zeroBalance.token.currencyCode
+        gatewayNodeAddsRecognisedIssuer(issuerParty = issuer, currencyCode= currencyCode, gatewayNode = gatewayNode)
         //TODO: add recognised issuer twice
 
         gatewayNode.transaction {
@@ -26,6 +27,7 @@ class AddRecognisedIssuerFlowTest: FlowTestsBase() {
 
             assertEquals(issuer, recognisedIssuer.issuer)
             assertEquals(gatewayParty, recognisedIssuer.addedBy)
+            assertEquals(currencyCode, recognisedIssuer.currencyCode)
         }
     }
 

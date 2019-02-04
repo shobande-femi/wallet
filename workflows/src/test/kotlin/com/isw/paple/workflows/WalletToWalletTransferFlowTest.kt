@@ -18,7 +18,7 @@ class WalletToWalletTransferFlowTest : FlowTestsBase() {
     @Test
     fun `transfer from gateway to gateway`() {
         val recipientNode = gatewayBNode
-        gatewayNodeAddsRecognisedIssuer(issuer, recipientNode)
+        gatewayNodeAddsRecognisedIssuer(issuer, zeroBalance.token.currencyCode, recipientNode)
         transferFromGateway(
             senderNode = gatewayANode,
             recipientNode = recipientNode,
@@ -58,7 +58,7 @@ class WalletToWalletTransferFlowTest : FlowTestsBase() {
     }
 
     private fun transferFromGateway(senderNode: StartedMockNode, recipientNode: StartedMockNode, recipientWalletType: WalletType, transferType: TransferType) {
-        gatewayNodeAddsRecognisedIssuer(issuer, senderNode)
+        gatewayNodeAddsRecognisedIssuer(issuer, zeroBalance.token.currencyCode, senderNode)
 
         val walletStatus = WalletStatus.UNKNOWN
 

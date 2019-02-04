@@ -22,7 +22,7 @@ class CreateWalletFlowTest: FlowTestsBase() {
         val wallet = Wallet(walletId, gatewayParty, zeroBalance, status, type)
 
         //TODO: try creating a wallet before gateway node adds recognised issuer
-        gatewayNodeAddsRecognisedIssuer(issuer, gatewayNode)
+        gatewayNodeAddsRecognisedIssuer(issuer, zeroBalance.token.currencyCode, gatewayNode)
         issuerNodeCreatesWallet(wallet)
         //TODO: add same wallet twice
 

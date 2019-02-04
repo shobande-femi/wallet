@@ -13,7 +13,7 @@ import net.corda.testing.core.singleIdentity
 import org.junit.Test
 import kotlin.test.assertEquals
 
-class FundGatewayWalletFlowTest: FlowTestsBase() {
+class IssueFundsToWalletFlowTest: FlowTestsBase() {
     @Test
     fun `fund gateway owned wallet`() {
         //TODO: refactor wallet creation into a function
@@ -23,7 +23,7 @@ class FundGatewayWalletFlowTest: FlowTestsBase() {
         val type = WalletType.GATEWAY_OWNED
         val wallet = Wallet(walletId, gatewayParty, zeroBalance, status, type)
 
-        gatewayNodeAddsRecognisedIssuer(issuer, gatewayNode)
+        gatewayNodeAddsRecognisedIssuer(issuer, zeroBalance.token.currencyCode, gatewayNode)
         val createdWalletState = issuerNodeCreatesWallet(wallet).tx.outputsOfType<WalletState>().single()
 
         issuerNodeFundsGatewayWallet(createdWalletState.linearId.externalId.toString(), fundAmount)
