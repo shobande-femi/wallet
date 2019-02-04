@@ -39,7 +39,7 @@ class IssuanceContract : Contract {
         val outputIssuanceState = tx.outputsOfType<IssuanceState>().single()
 
         //TODO: flow for verifying wallets must be written before enabling this contract condition
-//        "Wallet receiving issuance must be verified" using (inputWalletState.verified)
+        "Wallet receiving issuance must be verified" using (inputWalletState.verified)
 
         "Self issuance not allowed" using (inputWalletState.owner != inputWalletState.issuedBy)
         "Can only issue to gateway owned wallets" using (inputWalletState.type == WalletType.GATEWAY_OWNED)
