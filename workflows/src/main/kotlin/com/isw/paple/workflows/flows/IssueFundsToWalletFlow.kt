@@ -7,6 +7,7 @@ import com.isw.paple.common.states.IssuanceState
 import com.isw.paple.common.states.WalletState
 import com.isw.paple.common.types.IssuanceStatus
 import com.isw.paple.common.types.WalletType
+import com.isw.paple.common.utilities.getActivatedRecognisedIssuer
 import com.isw.paple.common.utilities.getWalletStateByWalletIdAndWalletType
 import net.corda.core.contracts.*
 import net.corda.core.flows.*
@@ -24,7 +25,7 @@ import java.util.*
  * Before starting this flow, Gateways must can add a recognized Issuer by running the [AddRecognisedIssuerFlow]
  *
  */
-object FundGatewayWalletFlow {
+object IssueFundsToWalletFlow {
 
     /**
      * Issues some Cash to Gateway Owned Wallets
@@ -80,7 +81,7 @@ object FundGatewayWalletFlow {
 
         @Suspendable
         override fun call(): SignedTransaction {
-            logger.info("Starting FundGatewayWalletFlow.Initiator")
+            logger.info("Starting IssueFundsToWalletFlow.Initiator")
 
             logger.info("Checking if wallet with $walletId exists")
             val inputWalletStateAndRef = getWalletStateByWalletIdAndWalletType(walletId = walletId, type = WalletType.GATEWAY_OWNED, services = serviceHub) ?: throw NonExistentWalletException(walletId)
@@ -114,7 +115,7 @@ object FundGatewayWalletFlow {
                 throw UnacceptableCurrencyException(walletId, amount.token)
             }
 
-            //TODO: funding limits and balance limits, also check if wallet verified
+            //TODO: funding limits and balance limits
 
         }
 
@@ -128,14 +129,13 @@ object FundGatewayWalletFlow {
             val notary = serviceHub.networkMapCache.notaryIdentities.first()
 
             logger.info("Constructing tx")
-            val fundCommand = Command(WalletContract.Fund(), listOf(ourIdentity.owningKey, inputWalletState.owner.owningKey))
+            val issueFundCommand = Command(WalletContract.IssueFund(), listOf(ourIdentity.owningKey, inputWalletState.owner.owningKey))
             val outputWalletState = inputWalletState.withNewBalance(inputWalletState.balance.plus(amount))
             val outputWalletStateAndContract = StateAndContract(outputWalletState, WalletContract.CONTRACT_ID)
 
             val issueCashCommand = Command(Cash.Commands.Issue(), listOf(ourIdentity.owningKey))
             val issuerAndToken = Issued(PartyAndReference(ourIdentity, OpaqueBytes.of(0)), amount.token)
             val outputCashState = Cash.State(amount = Amount(amount.quantity, issuerAndToken), owner = inputWalletState.owner)
-            //TODO include onlyFromParties, to ensure gateways only accept cash issued from recognised issuers
             val outputCashStateAndContract = StateAndContract(outputCashState, Cash.PROGRAM_ID)
 
             val createIssuanceCommand = Command(IssuanceContract.Create(), listOf(ourIdentity.owningKey, inputWalletState.owner.owningKey))
@@ -146,7 +146,7 @@ object FundGatewayWalletFlow {
             progressTracker.currentStep = TX_BUILDER
             return TransactionBuilder(notary = notary)
                 .withItems(
-                    fundCommand,
+                    issueFundCommand,
                     inputWalletStateAndRef,
                     outputWalletStateAndContract,
 
@@ -185,7 +185,7 @@ object FundGatewayWalletFlow {
 
         @Suspendable
         override fun call(): SignedTransaction {
-            logger.info("Starting FundGatewayWalletFlow.Responder")
+            logger.info("Starting IssueFundsToWalletFlow.Responder")
             progressTracker.currentStep = VALIDATE_AND_SIGN
             val signTxFlow = object : SignTransactionFlow(issuerSession, VALIDATE_AND_SIGN.childProgressTracker()) {
                 @Suspendable
@@ -193,7 +193,7 @@ object FundGatewayWalletFlow {
                     logger.info("Validating tx before appending signature")
                     val ledgerTx = stx.toLedgerTransaction(serviceHub, false)
 
-                    require(ledgerTx.commandsOfType<WalletContract.Fund>().size == 1) {
+                    require(ledgerTx.commandsOfType<WalletContract.IssueFund>().size == 1) {
                         "Transaction must involve fund issuance to a wallet"
                     }
                     require(ledgerTx.commandsOfType<Cash.Commands.Issue>().size == 1) {
@@ -204,6 +204,14 @@ object FundGatewayWalletFlow {
                     }
                     require(ledgerTx.outputsOfType<WalletState>().single().owner == ourIdentity) {
                         "Gateway signing this transaction must be wallet owner"
+                    }
+                    val outputCashState = ledgerTx.outputsOfType<Cash.State>().single()
+                    val activatedRecognisedIssuerStateAndRef = getActivatedRecognisedIssuer(
+                        outputCashState.amount.token.product.currencyCode,
+                        serviceHub
+                    ) ?: throw NoActivatedRecognisedIssuerException()
+                    require(outputCashState.amount.token.issuer.party == activatedRecognisedIssuerStateAndRef.state.data.issuer) {
+                        "Can only accept cash from an activated recognised issuer"
                     }
                 }
             }
@@ -217,6 +225,7 @@ object FundGatewayWalletFlow {
 
     }
 
+    class NoActivatedRecognisedIssuerException : FlowException("Cannot find an activated recognised issuer in vault")
     class NonExistentWalletException(walletId: String) : FlowException("Wallet with id: $walletId doesn't exist")
     class UnacceptableCurrencyException(walletId: String, currency: Currency) : FlowException("Wallet $walletId be funded with $currency")
 
