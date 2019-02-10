@@ -38,17 +38,17 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 }
 
 springBoot {
-    mainClassName = "com.isw.paple.clients.webserver.ServerKt"
+    mainClassName = "com.example.wallet.clients.webserver.ServerKt"
 }
 
 task runTemplateClient(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    main = 'com.isw.paple.clients.ClientKt'
+    main = 'com.example.wallet.clients.ClientKt'
     args 'localhost:10006', 'user1', 'test'
 }
 
 task runTemplateServer(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    main = 'com.isw.paple.clients.webserver.ServerKt'
+    main = 'com.example.wallet.clients.webserver.ServerKt'
     args '--server.port=10050', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
 }

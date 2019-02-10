@@ -1,4 +1,4 @@
-rootProject.name = 'paple'
+rootProject.name = 'wallet'
 include 'common'
 include 'workflows'
 include 'clients'

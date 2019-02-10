@@ -1,8 +1,8 @@
 buildscript {
     ext {
         corda_release_group = 'net.corda'
-        corda_release_version = '4.0-SNAPSHOT'
-        corda_gradle_plugins_version = '4.0.37'
+        corda_release_version = '4.0-RC03'
+        corda_gradle_plugins_version = '4.0.38'
         corda_platform_version = '4'
         kotlin_version = '1.2.71'
         junit_version = '4.12'
@@ -17,7 +17,7 @@ buildscript {
         mavenLocal()
         mavenCentral()
         jcenter()
-        maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/corda' }
+        maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/corda-releases' }
     }
 
     dependencies {
@@ -34,10 +34,8 @@ allprojects {
         mavenLocal()
         jcenter()
         mavenCentral()
-        maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/corda' }
-        // Can be removed post-release - used to get nightly snapshot build.
-        maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/corda-dev' }
         maven { url 'https://jitpack.io' }
+        maven { url 'https://ci-artifactory.corda.r3cev.com/artifactory/corda-releases' }
     }
 }
 
@@ -91,7 +89,7 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 
 cordapp {
     info {
-        name "Pan African Payment Ledger"
+        name "Dummy Wallet"
         vendor "Interswitch"
         targetPlatformVersion corda_platform_version.toInteger()
         minimumPlatformVersion corda_platform_version.toInteger()
@@ -111,7 +109,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         cordapps = []
     }
     node {
-        name "O=ISW,L=Victoria Island,ST=Lagos,C=NG"
+        name "O=Issuer,L=Victoria Island,ST=Lagos,C=NG"
         p2pPort 10005
         rpcSettings {
             address("localhost:10006")
@@ -129,7 +127,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
     }
 
     node {
-        name "O=GatewayA,L=Lagos,C=NG"
+        name "O=GatewayA,L=Victoria Island,ST=Lagos,C=NG"
         p2pPort 10008
         rpcSettings {
             address("localhost:10009")
@@ -145,7 +143,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
     }
     node {
-        name "O=GatewayB,L=Port Harcourt,C=NG"
+        name "O=GatewayB,L=Victoria Island,ST=Lagos,C=NG"
         p2pPort 10011
         rpcSettings {
             address("localhost:10012")
@@ -178,9 +176,8 @@ task setHttpProxyFromEnv {
 
 build.dependsOn setHttpProxyFromEnv
 
-//task runTemplateClient(type: JavaExec) {
-//    classpath = sourceSets.main.runtimeClasspath
-//    main = 'com.template.TemplateClient'
-//    main = 'com.isw.client.TestClientRPC'
-//    args 'localhost:10006', 'femi'
-//}
+task runTemplateClient(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    main = 'com.example.wallet.clients.Client'
+    args 'localhost:10006', 'femi'
+}

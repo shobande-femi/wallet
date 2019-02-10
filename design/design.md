@@ -1,4 +1,4 @@
-## Pan African Payment Ledger Design
+## Dummy Wallet Design
 
 ### **Background**
 

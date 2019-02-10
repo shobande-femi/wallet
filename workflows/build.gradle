@@ -7,7 +7,7 @@ cordapp {
     targetPlatformVersion corda_platform_version.toInteger()
     minimumPlatformVersion corda_platform_version.toInteger()
     workflow {
-        name "Paple Workflows"
+        name "Dummy Wallet Workflows"
         vendor "Interswitch"
         licence "A liberal, open source licence"
         versionId 1
